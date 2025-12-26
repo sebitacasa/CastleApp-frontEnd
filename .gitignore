@@ -1,0 +1,34 @@
+# Dependencias
+node_modules/
+
+# Expo y compilación
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# --- SEGURIDAD ---
+# Ignora archivos de entorno (aquí podrías tener claves de Maps para el mapa visual)
+.env
+.env.local
+.env.*
+
+# Native (Carpetas generadas por Android/iOS)
+/ios
+/android
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro y Debug
+.metro-health-check*
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Configuración de sistema y editores
+.DS_Store
+*.pem
+.vscode/
