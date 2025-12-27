@@ -3,7 +3,8 @@ import {
   View, Text, FlatList, ActivityIndicator, 
   StatusBar, Alert, RefreshControl, TouchableOpacity, StyleSheet 
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons'; 
+
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
 import HeroCarousel from '../components/HeroCarousel';
@@ -111,7 +112,7 @@ export default function FeedScreen() {
       <View style={styles.navBar}>
         <View style={styles.navTopRow}>
           <View style={styles.logoRow}>
-            <Ionicons name="construct" size={24} color="white" />
+           <MaterialCommunityIcons name="bank" size={26} color="white" />
             <Text style={styles.navTitle}>CastleApp</Text>
           </View>
           {/* Botón para ir al mapa manualmente si el usuario quiere */}
@@ -176,7 +177,7 @@ export default function FeedScreen() {
             if (hasMore && !loadingMore) loadData(page + 1); 
           }}
           onEndReachedThreshold={0.5}
-          ListHeaderComponent={HeroCarousel}
+          
           refreshControl={
             <RefreshControl 
               refreshing={refreshing} 
