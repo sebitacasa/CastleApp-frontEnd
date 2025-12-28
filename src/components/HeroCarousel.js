@@ -1,84 +1,118 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, Image, Dimensions } from 'react-native';
-// Importamos los estilos desde el archivo separado
-import styles from './HeroCarousel.styles';
+import { 
+  View, 
+  Text, 
+  FlatList, 
+  ImageBackground 
+} from 'react-native';
 
-const { width } = Dimensions.get('window');
+// Importamos los estilos y las constantes del archivo separado
+import styles, { width } from './HeroCarousel.styles';
 
-const HERO_IMAGES = [
-  { id: '1', url: 'https://images.unsplash.com/photo-1518709268805-4e9042af9f23?q=80&w=800' }, 
-  { id: '2', url: 'https://images.unsplash.com/photo-1564507592333-c60657eea523?q=80&w=800' },
-  { id: '3', url: 'https://images.unsplash.com/photo-1590274853856-f22d5ee3d228?q=80&w=800' }
+// Datos de las imágenes (Puedes cambiarlas aquí fácilmente)
+const slides = [
+  {
+    id: '1',
+    image: 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1996&auto=format&fit=crop', // Coliseo
+    title: 'Explora el Pasado',
+    subtitle: 'Descubre monumentos eternos'
+  },
+  {
+    id: '2',
+    image: 'https://images.unsplash.com/photo-1564399580075-5dfe19c205f9?q=80&w=2070&auto=format&fit=crop', // Partenón
+    title: 'Ruinas Legendarias',
+    subtitle: 'Historia viva en cada piedra'
+  },
+  {
+    id: '3',
+    image: 'https://images.unsplash.com/photo-1587595431973-160d0d94add1?q=80&w=2076&auto=format&fit=crop', // Machu Picchu
+    title: 'Ciudades Perdidas',
+    subtitle: 'Maravillas de la ingeniería antigua'
+  },
+  {
+    id: '4',
+    image: 'https://images.unsplash.com/photo-1599309927896-1c27271822be?q=80&w=2070&auto=format&fit=crop', // Chichen Itza
+    title: 'Templos Sagrados',
+    subtitle: 'Conecta con civilizaciones pasadas'
+  },
 ];
 
-const HeroCarousel = () => {
-  const flatListRef = useRef(null);
+export default function HeroCarousel() {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const flatListRef = useRef(null);
 
+  // --- Lógica de Auto-Play (Cambia cada 5 seg) ---
   useEffect(() => {
     const interval = setInterval(() => {
       let nextIndex = currentIndex + 1;
-      if (nextIndex >= HERO_IMAGES.length) nextIndex = 0;
+      
+      // Reiniciar al llegar al final
+      if (nextIndex >= slides.length) {
+        nextIndex = 0;
+      }
 
-      // scrollToIndex puede fallar si el componente se desmonta justo en el intervalo
+      setCurrentIndex(nextIndex);
+
+      // Desplazamiento suave
       if (flatListRef.current) {
         flatListRef.current.scrollToIndex({
           index: nextIndex,
           animated: true,
         });
-        setCurrentIndex(nextIndex);
       }
-    }, 4000);
+    }, 5000); 
 
     return () => clearInterval(interval);
   }, [currentIndex]);
 
-  const onScroll = (event) => {
-    const contentOffset = event.nativeEvent.contentOffset.x;
-    const viewSize = event.nativeEvent.layoutMeasurement.width;
-    // Usamos Math.round para mayor precisión al detectar el índice en scroll manual
-    const newIndex = Math.round(contentOffset / viewSize);
-    if (newIndex !== currentIndex) setCurrentIndex(newIndex);
-  };
+  const renderItem = ({ item }) => (
+    <View style={styles.slideContainer}>
+      <ImageBackground 
+        source={{ uri: item.image }} 
+        style={styles.imageBackground}
+        imageStyle={{ borderRadius: 0 }}
+      >
+        {/* Capa de Sombreado (Viene de los estilos) */}
+        <View style={styles.darkOverlay} />
+
+        <View style={styles.textContainer}>
+          <Text style={styles.title}>{item.title}</Text>
+          <Text style={styles.subtitle}>{item.subtitle}</Text>
+        </View>
+      </ImageBackground>
+    </View>
+  );
 
   return (
-    <View>
+    <View style={styles.container}>
       <FlatList
         ref={flatListRef}
-        data={HERO_IMAGES}
+        data={slides}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
         horizontal
         pagingEnabled
-        onMomentumScrollEnd={onScroll}
         showsHorizontalScrollIndicator={false}
-        keyExtractor={(item) => item.id}
-        // getItemLayout mejora mucho el rendimiento del scroll automático
-        getItemLayout={(_, index) => ({ 
-          length: width, 
-          offset: width * index, 
-          index 
+        scrollEnabled={false} // Solo automático
+        getItemLayout={(data, index) => ({
+          length: width,
+          offset: width * index,
+          index,
         })}
-        renderItem={({ item }) => (
-          <Image 
-            source={{ uri: item.url }} 
-            style={styles.heroImage} 
-            resizeMode="cover" 
-          />
-        )}
       />
       
-      {/* Indicadores de paginación */}
+      {/* Paginación */}
       <View style={styles.pagination}>
-        {HERO_IMAGES.map((_, i) => (
-          <View 
-            key={i} 
-            style={[styles.dot, { opacity: i === currentIndex ? 1 : 0.4 }]} 
+        {slides.map((_, index) => (
+          <View
+            key={index}
+            style={[
+              styles.dot,
+              currentIndex === index ? styles.dotActive : styles.dotInactive,
+            ]}
           />
         ))}
       </View>
-      
-      <Text style={styles.sectionTitle}>Curated Stories</Text>
     </View>
   );
-};
-
-export default HeroCarousel;
+}

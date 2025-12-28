@@ -27,6 +27,7 @@ const CitySearch = ({ onLocationSelect }) => {
       // Américas
       'US', 'CA', 'MX', 
       'AR', 'BR', 'CL', 'CO', 'PE', 'UY', 'EC', 'BO', 'PY', 'VE', 'CR', 'PA'
+      
   ];
 
   useEffect(() => {

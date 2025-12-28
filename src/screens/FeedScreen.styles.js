@@ -1,38 +1,44 @@
 import { StyleSheet } from 'react-native';
 
 export default StyleSheet.create({
+  // --- EL CONTENEDOR PRINCIPAL YA NO TIENE COLOR ---
   mainContainer: { 
     flex: 1, 
-    backgroundColor: '#f2f2f2' 
+    // backgroundColor: '#203040', <-- ELIMINADO
+  },
+
+  // --- NUEVO: ESTILO PARA LA IMAGEN DE FONDO GLOBAL ---
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
   },
   
-  // --- AQUÍ ESTÁ EL CAMBIO ---
-  navBar: { 
-    backgroundColor: '#38761D', 
-    paddingTop: 45, 
-    paddingBottom: 15,
-    
-    // 1. Agregamos margen abajo para separar las tarjetas
-    marginBottom: 20, 
-    
-    // 2. (Opcional) Bordes redondeados abajo para suavizar el corte
- 
-
-    // 3. Sombra para que la barra se "levante" sobre el fondo gris
-    elevation: 5, 
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    zIndex: 10, // Asegura que la sombra se vea por encima de las tarjetas
+  // --- NUEVO: CAPA OSCURA GLOBAL (ENSOMBRECIDO) ---
+  globalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Oscurece todo un 60% para que las cards resalten
+    paddingTop: 60, // Espacio para la StatusBar translucent
   },
-  // ---------------------------
+  
+  // --- NAV BAR (Ahora es transparente) ---
+  navBar: { 
+    // Quitamos padding superior porque ahora lo maneja globalOverlay
+    paddingBottom: 15,
+    marginBottom: 10, 
+    zIndex: 10, 
+    // Eliminamos bordes y sombras porque ya no es una "caja" separada
+    // elevation: 10, shadowColor: '#000', ... etc.
+  },
+  
+  // --- ELIMINAMOS EL OVERLAY VIEJO ---
+  // overlay: { ... } <-- ELIMINADO
 
   navTopRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     paddingHorizontal: 20, 
-    marginBottom: 15 
+    marginBottom: 15,
   },
   logoRow: { 
     flexDirection: 'row', 
@@ -40,44 +46,35 @@ export default StyleSheet.create({
   },
   navTitle: { 
     color: 'white', 
-    fontSize: 22, 
+    fontSize: 24, 
     fontWeight: 'bold', 
-    marginLeft: 8 
+    marginLeft: 8,
+    textShadowColor: 'rgba(0,0,0,0.8)', 
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 4,
   },
-  searchBarContainer: { 
-    backgroundColor: 'white', 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginHorizontal: 15, 
-    borderRadius: 25, 
-    paddingHorizontal: 15, 
-    height: 45, 
-    marginBottom: 15, 
-    elevation: 3 
-  },
-  searchInput: { 
-    flex: 1, 
-    marginLeft: 10, 
-    fontSize: 16, 
-    color: '#333' 
-  },
+  
   catBtn: { 
     paddingHorizontal: 18, 
     paddingVertical: 6, 
     borderRadius: 20, 
-    backgroundColor: 'rgba(255,255,255,0.2)', 
-    marginRight: 10 
+    backgroundColor: 'rgba(255,255,255,0.2)', // Un poco más transparente
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)'
   },
   catBtnActive: { 
-    backgroundColor: 'white' 
+    backgroundColor: 'white',
+    borderColor: 'white'
   },
   catText: { 
     color: 'white', 
     fontWeight: 'bold' 
   },
   catTextActive: { 
-    color: '#38761D' 
+    color: '#000' // Texto negro para el botón activo blanco
   },
+  
   centerLoading: { 
     flex: 1, 
     justifyContent: 'center', 

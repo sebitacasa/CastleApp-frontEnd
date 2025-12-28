@@ -2,28 +2,26 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
-  StyleSheet, 
   Image, 
   ScrollView, 
   TouchableOpacity, 
   StatusBar, 
-  Dimensions, 
   Linking, 
   Platform, 
   Alert, 
-  FlatList 
+  FlatList,
+  Modal
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 
-// 👇 IMPORTAMOS EL SERVICIO DE FAVORITOS (Asegúrate de haber creado storage.js)
+// 👇 IMPORTAMOS ESTILOS Y CONSTANTES
+import styles, { width, height, IMG_HEIGHT } from './DetailScreen.styles';
+
+// 👇 IMPORTAMOS EL SERVICIO DE FAVORITOS
 import { checkIsFavorite, toggleFavorite } from '../api/storage.js';
 
-const { width } = Dimensions.get('window');
-const IMG_HEIGHT = 350; 
-
 // 👇 CONSTANTE DE IP (Ajusta si es necesario)
-//const API_BASE = 'http://10.0.2.2:8080';
 const API_BASE = 'http://192.168.1.33:8080';
 
 // --- HELPER: IMAGEN POR DEFECTO ---
@@ -41,17 +39,27 @@ export default function DetailScreen({ route, navigation }) {
   // ❤️ ESTADO PARA FAVORITOS
   const [isFav, setIsFav] = useState(false);
 
-  // 1. CARGA INICIAL: Chequear si ya es favorito
+  // 🖼️ ESTADO PARA EL VISOR DE PANTALLA COMPLETA
+  const [isFullScreenVisible, setIsFullScreenVisible] = useState(false);
+  const [fullScreenIndex, setFullScreenIndex] = useState(0);
+
+  // 1. CARGA INICIAL
   useEffect(() => {
     if (locationData && locationData.id) {
         checkIsFavorite(locationData.id).then(setIsFav);
     }
   }, [locationData]);
 
-  // 2. FUNCIÓN TOGGLE (Guardar/Quitar)
+  // 2. FUNCIÓN TOGGLE FAVORITOS
   const handleToggleFav = async () => {
     const newState = await toggleFavorite(locationData);
-    setIsFav(newState); // Actualizamos el corazón visualmente
+    setIsFav(newState);
+  };
+
+  // 3. ABRIR PANTALLA COMPLETA
+  const openFullScreen = (index) => {
+    setFullScreenIndex(index);
+    setIsFullScreenVisible(true);
   };
 
   if (!locationData) return null;
@@ -69,13 +77,31 @@ export default function DetailScreen({ route, navigation }) {
     gallery = [getPlaceholderImage(locationData.category)];
   }
 
-  // --- ABRIR MAPAS EXTERNOS (Navegación GPS) ---
+  // --- HELPER URL ---
+  const getProcessedUrl = (url) => {
+    if (!url || typeof url !== 'string') return null;
+    let cleanUrl = url.trim().replace(/["{}]/g, "");
+    if (cleanUrl.includes('/thumb/')) {
+        try {
+            let parts = cleanUrl.split('/');
+            if (parts[parts.length - 1].includes('px-')) parts.pop();
+            cleanUrl = parts.join('/').replace('/thumb/', '/');
+        } catch (e) { /* Fallback */ }
+    }
+    if (cleanUrl.startsWith('http:')) cleanUrl = cleanUrl.replace('http:', 'https:');
+    
+    if (cleanUrl.includes('wikimedia.org')) {
+        return `${API_BASE}/api/image-proxy?url=${encodeURIComponent(cleanUrl)}`;
+    }
+    return cleanUrl;
+  };
+
+  // --- ABRIR MAPAS EXTERNOS ---
   const openExternalMaps = () => {
     const label = encodeURIComponent(locationData.name || 'Destino');
     const scheme = Platform.select({ ios: 'maps:0,0?q=', android: 'geo:0,0?q=' });
     const latLng = `${lat},${lon}`;
     
-    // URL Scheme robusto para ambos sistemas
     const url = Platform.select({
       ios: `${scheme}${label}@${latLng}`,
       android: `${scheme}${latLng}(${label})`
@@ -84,50 +110,37 @@ export default function DetailScreen({ route, navigation }) {
     Linking.openURL(url).catch(() => Alert.alert("Error", "No se pudo abrir la aplicación de mapas."));
   };
 
-  // --- HELPER: OBTENER URL ORIGINAL ---
-  const getOriginalWikiUrl = (url) => {
-      if (!url || typeof url !== 'string') return null;
-      if (url.includes('/thumb/')) {
-          try {
-              let clean = url.replace('/thumb/', '/');
-              const parts = clean.split('/');
-              if (parts[parts.length - 1].includes('px-')) parts.pop();
-              return parts.join('/');
-          } catch (e) { return url; }
-      }
-      return url;
-  };
-
-  // --- RENDER ITEM CARRUSEL ---
-  const renderCarouselItem = ({ item }) => {
-    if (!item) return null;
-
-    let cleanUrl = String(item).trim();
-    cleanUrl = getOriginalWikiUrl(cleanUrl);
-    cleanUrl = cleanUrl.replace(/["{}]/g, ""); 
-    if (cleanUrl.startsWith('http:')) cleanUrl = cleanUrl.replace('http:', 'https:');
-
-    let imageUrlToShow;
-    if (cleanUrl.includes('wikimedia.org')) {
-        imageUrlToShow = `${API_BASE}/api/image-proxy?url=${encodeURIComponent(cleanUrl)}`;
-    } else {
-        imageUrlToShow = cleanUrl;
-    }
+  // --- RENDERIZADO ---
+  const renderCarouselItem = ({ item, index }) => {
+    const imageUrl = getProcessedUrl(item);
+    if (!imageUrl) return null;
 
     return (
-      <View style={{ width, height: IMG_HEIGHT }}>
-        <Image 
-          source={{ uri: imageUrlToShow }} 
-          style={styles.carouselImage} 
-          resizeMode="cover" 
-          onError={(e) => {
-              if(imageUrlToShow.includes('api/image-proxy')) {
-                  console.log("⚠️ Error carga imagen detalle:", e.nativeEvent.error);
-              }
-          }}
-        />
-        <View style={styles.imageOverlay} />
-      </View>
+      <TouchableOpacity activeOpacity={0.9} onPress={() => openFullScreen(index)}>
+        <View style={{ width, height: IMG_HEIGHT }}>
+          <Image 
+            source={{ uri: imageUrl }} 
+            style={styles.carouselImage} 
+            resizeMode="cover" 
+          />
+          <View style={styles.imageOverlay} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderFullScreenItem = ({ item }) => {
+    const imageUrl = getProcessedUrl(item);
+    if (!imageUrl) return null;
+    
+    return (
+        <View style={{ width, height, justifyContent: 'center', alignItems: 'center' }}>
+            <Image
+                source={{ uri: imageUrl }}
+                style={{ width: '100%', height: '100%' }}
+                resizeMode="contain"
+            />
+        </View>
     );
   };
 
@@ -137,7 +150,7 @@ export default function DetailScreen({ route, navigation }) {
       
       <ScrollView contentContainerStyle={{ paddingBottom: 50 }} showsVerticalScrollIndicator={false}>
         
-        {/* CARRUSEL E IMÁGENES */}
+        {/* CARRUSEL */}
         <View style={styles.carouselContainer}>
           <FlatList
             data={gallery}
@@ -152,56 +165,38 @@ export default function DetailScreen({ route, navigation }) {
             }}
           />
 
-          {/* BOTÓN ATRÁS (Izquierda) */}
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
 
-          {/* ❤️ BOTÓN FAVORITO (Derecha) ❤️ */}
-          <TouchableOpacity 
-            style={styles.favButton} 
-            onPress={handleToggleFav}
-            activeOpacity={0.8}
-          >
-            <Ionicons 
-              name={isFav ? "heart" : "heart-outline"} 
-              size={26} 
-              color={isFav ? "#ff4757" : "#fff"} 
-            />
+          <TouchableOpacity style={styles.favButton} onPress={handleToggleFav} activeOpacity={0.8}>
+            <Ionicons name={isFav ? "heart" : "heart-outline"} size={26} color={isFav ? "#ff4757" : "#fff"} />
           </TouchableOpacity>
 
           {gallery.length > 1 && (
             <View style={styles.pagination}>
               {gallery.map((_, i) => (
-                <View 
-                  key={i} 
-                  style={[styles.dot, i === activeIndex ? styles.activeDot : null]} 
-                />
+                <View key={i} style={[styles.dot, i === activeIndex ? styles.activeDot : null]} />
               ))}
             </View>
           )}
         </View>
 
-        {/* INFO DEL LUGAR */}
+        {/* INFO */}
         <View style={styles.contentContainer}>
-          <Text style={styles.category}>
-             {locationData.category?.toUpperCase() || 'SITIO HISTÓRICO'}
-          </Text>
+          <View style={styles.categoryBadge}>
+            <Text style={styles.categoryText}>{locationData.category?.toUpperCase() || 'HISTORIC SITE'}</Text>
+          </View>
 
-          <Text style={styles.title}>
-             {locationData.name}
-          </Text>
+          <Text style={styles.title}>{locationData.name}</Text>
 
           <View style={styles.locationRow}>
-             <Ionicons name="location-sharp" size={16} color="#7f8c8d" style={{marginRight: 4, marginTop: 2}} />
-             <Text style={styles.locationText}>
-                 {locationData.country || 'Ubicación desconocida'}
-             </Text>
+              <Ionicons name="location-sharp" size={18} color="#bdc3c7" style={{marginRight: 6, marginTop: 2}} />
+              <Text style={styles.locationText}>{locationData.country || 'Ubicación desconocida'}</Text>
           </View>
 
           <View style={styles.divider} />
 
-          {/* SECCIÓN MAPA PEQUEÑO + BOTÓN NAVEGACIÓN */}
           <Text style={styles.sectionTitle}>Ubicación</Text>
           <View style={styles.miniMapContainer}>
             <MapView
@@ -215,13 +210,13 @@ export default function DetailScreen({ route, navigation }) {
                 }}
                 scrollEnabled={false}
                 zoomEnabled={false}
+                customMapStyle={[{"elementType":"geometry","stylers":[{"color":"#242f3e"}]},{"elementType":"labels.text.fill","stylers":[{"color":"#746855"}]},{"elementType":"labels.text.stroke","stylers":[{"color":"#242f3e"}]},{"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},{"featureType":"poi","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},{"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#263c3f"}]},{"featureType":"poi.park","elementType":"labels.text.fill","stylers":[{"color":"#6b9a76"}]},{"featureType":"road","elementType":"geometry","stylers":[{"color":"#38414e"}]},{"featureType":"road","elementType":"geometry.stroke","stylers":[{"color":"#212a37"}]},{"featureType":"road","elementType":"labels.text.fill","stylers":[{"color":"#9ca5b3"}]},{"featureType":"road.highway","elementType":"geometry","stylers":[{"color":"#746855"}]},{"featureType":"road.highway","elementType":"geometry.stroke","stylers":[{"color":"#1f2835"}]},{"featureType":"road.highway","elementType":"labels.text.fill","stylers":[{"color":"#f3d191"}]},{"featureType":"transit","elementType":"geometry","stylers":[{"color":"#2f3948"}]},{"featureType":"transit.station","elementType":"labels.text.fill","stylers":[{"color":"#d59563"}]},{"featureType":"water","elementType":"geometry","stylers":[{"color":"#17263c"}]},{"featureType":"water","elementType":"labels.text.fill","stylers":[{"color":"#515c6d"}]},{"featureType":"water","elementType":"labels.text.stroke","stylers":[{"color":"#17263c"}]}]}
             >
                 <Marker coordinate={{ latitude: lat, longitude: lon }} pinColor="#e74c3c" />
             </MapView>
             
-            {/* BOTÓN AZUL: CÓMO LLEGAR */}
             <TouchableOpacity style={styles.directionsButton} onPress={openExternalMaps} activeOpacity={0.8}>
-                <Ionicons name="navigate" size={20} color="#fff" style={{marginRight: 6}} />
+                <Ionicons name="navigate" size={20} color="#fff" style={{marginRight: 8}} />
                 <Text style={styles.directionsText}>Cómo llegar</Text>
             </TouchableOpacity>
           </View>
@@ -232,55 +227,45 @@ export default function DetailScreen({ route, navigation }) {
           <Text style={styles.description}>
             {locationData.description && locationData.description.length > 10 
                 ? locationData.description 
-                : 'No hay descripción histórica disponible para este lugar.'}
+                : 'No hay descripción histórica disponible para este lugar. Es posible que pronto se añada más información sobre este sitio.'}
           </Text>
 
         </View>
       </ScrollView>
+
+      {/* MODAL PANTALLA COMPLETA */}
+      <Modal
+        visible={isFullScreenVisible}
+        transparent={true}
+        onRequestClose={() => setIsFullScreenVisible(false)}
+        animationType="fade"
+      >
+        <View style={styles.fullScreenContainer}>
+            <TouchableOpacity 
+                style={styles.closeButton} 
+                onPress={() => setIsFullScreenVisible(false)}
+                hitSlop={{ top: 20, bottom: 20, left: 20, right: 20 }}
+            >
+                <Ionicons name="close" size={30} color="#fff" />
+            </TouchableOpacity>
+
+            <FlatList
+                data={gallery}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item, index) => index.toString()}
+                renderItem={renderFullScreenItem}
+                initialScrollIndex={fullScreenIndex}
+                getItemLayout={(data, index) => ({
+                    length: width,
+                    offset: width * index,
+                    index,
+                })}
+            />
+        </View>
+      </Modal>
+
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
-  carouselContainer: { height: IMG_HEIGHT, width: width, position: 'relative' },
-  carouselImage: { width: width, height: IMG_HEIGHT },
-  imageOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.1)' },
-  
-  pagination: { position: 'absolute', bottom: 40, width: '100%', flexDirection: 'row', justifyContent: 'center', alignItems: 'center', zIndex: 20 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)', marginHorizontal: 4 },
-  activeDot: { backgroundColor: '#fff', width: 10, height: 10, borderRadius: 5 },
-
-  // Botón Atrás
-  backButton: { 
-      position: 'absolute', top: 50, left: 20, 
-      width: 40, height: 40, borderRadius: 20, 
-      backgroundColor: 'rgba(0,0,0,0.5)', 
-      justifyContent: 'center', alignItems: 'center', zIndex: 10 
-  },
-  
-  // ❤️ Botón Favorito (Nuevo Estilo)
-  favButton: { 
-      position: 'absolute', top: 50, right: 20, 
-      width: 40, height: 40, borderRadius: 20, 
-      backgroundColor: 'rgba(0,0,0,0.5)', // Fondo semi-transparente para que se vea sobre la foto
-      justifyContent: 'center', alignItems: 'center', zIndex: 10 
-  },
-
-  contentContainer: { flex: 1, backgroundColor: '#fff', borderTopLeftRadius: 30, borderTopRightRadius: 30, marginTop: -30, paddingHorizontal: 25, paddingTop: 30 },
-
-  category: { color: '#e74c3c', fontWeight: '700', fontSize: 12, marginBottom: 5, letterSpacing: 1 },
-  title: { fontSize: 28, fontWeight: '800', color: '#2c3e50', marginBottom: 8, lineHeight: 34 },
-  locationRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 5 },
-  locationText: { fontSize: 15, color: '#7f8c8d', fontWeight: '500', flex: 1, lineHeight: 20 },
-
-  divider: { height: 1, backgroundColor: '#f1f2f6', marginVertical: 25 },
-  sectionTitle: { fontSize: 20, fontWeight: '700', marginBottom: 15, color: '#2c3e50' },
-  description: { fontSize: 16, lineHeight: 26, color: '#57606f', textAlign: 'left' },
-
-  miniMapContainer: { height: 200, borderRadius: 16, overflow: 'hidden', backgroundColor: '#f0f0f0', position: 'relative' },
-  miniMap: { width: '100%', height: '100%' },
-  
-  directionsButton: { position: 'absolute', bottom: 15, right: 15, backgroundColor: '#4285F4', flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 16, borderRadius: 25, elevation: 5, shadowColor: "#000", shadowOffset: {width: 0, height: 2}, shadowOpacity: 0.3 },
-  directionsText: { color: '#fff', fontWeight: 'bold', fontSize: 14 }
-});

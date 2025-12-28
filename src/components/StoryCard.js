@@ -1,68 +1,78 @@
 import React, { useState, useMemo, memo } from 'react';
-import { View, Text, Image, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-// Importación de estilos externos
+import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import styles from './StoryCard.styles';
 
+// Tu configuración de API
 const API_BASE = 'http://192.168.1.33:8080';
 const BACKUP_URL = 'https://images.pexels.com/photos/2422265/pexels-photo-2422265.jpeg?auto=compress&cs=tinysrgb&w=800';
 
 const StoryCard = memo(({ item, navigation }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // Procesamiento de URL con Cache Busting
+  // --- TU LÓGICA DE PROCESAMIENTO DE URL (INTACTA) ---
   const finalUrl = useMemo(() => {
+    // Intentamos obtener la imagen del array o la propiedad directa
     let rawUrl = item.images?.[0] || item.image_url;
-    if (!rawUrl) return null;
+    
+    // Si no hay ninguna, usamos null para que salga el backup
+    if (!rawUrl) return null; 
     
     let processed = String(rawUrl).trim().replace(/["{}]/g, "");
-    const cacheBuster = `&t=${new Date().getTime()}`;
+    const cacheBuster = `&t=${new Date().getTime()}`; // Truco para refrescar caché
     
     return `${API_BASE}/api/image-proxy?url=${encodeURIComponent(processed)}${cacheBuster}`;
-  }, [item.id, item.image_url]);
+  }, [item.id, item.image_url, item.images]);
+
+  const handlePress = () => {
+    navigation.navigate('Detail', { locationData: item });
+  };
 
   return (
     <TouchableOpacity 
       style={styles.cardContainer} 
       activeOpacity={0.9}
-      onPress={() => navigation.navigate('Detail', { locationData: item })}
+      onPress={handlePress}
     >
-      <View style={styles.imageWrapper}>
-        {/* Imagen de respaldo (siempre presente debajo) */}
+      {/* 1. SECCIÓN DE IMAGEN */}
+      <View style={styles.imageContainer}>
+        
+        {/* A. Imagen de Respaldo (Fondo estático) */}
         <Image 
           source={{ uri: BACKUP_URL }} 
           style={styles.cardImagePlaceholder} 
           resizeMode="cover"
         />
         
-        {/* Imagen Real con transición de opacidad */}
-        <Image 
-          source={{ uri: finalUrl }} 
-          style={[styles.cardImage, { opacity: isLoaded ? 1 : 0 }]} 
-          onLoad={() => setIsLoaded(true)}
-          resizeMode="cover"
-        />
-        
-        {/* Contador de fotos si hay más de una */}
-        {item.images?.length > 1 && (
-          <View style={styles.photoBadge}>
-            <Ionicons name="images" size={12} color="white" />
-            <Text style={styles.photoBadgeText}>{item.images.length}</Text>
-          </View>
+        {/* B. Imagen Real (Se superpone con opacidad animada) */}
+        {finalUrl && (
+            <Image 
+              source={{ uri: finalUrl }} 
+              style={[styles.cardImage, { opacity: isLoaded ? 1 : 0 }]} 
+              onLoad={() => setIsLoaded(true)}
+              resizeMode="cover"
+            />
         )}
+        
+        {/* C. Badge de Categoría (Bordó) */}
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>
+            {item.category ? item.category.toUpperCase() : 'HISTORIC'}
+          </Text>
+        </View>
       </View>
 
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>{item.name}</Text>
-        <Text style={styles.cardCountry}>📍 {item.country}</Text>
+      {/* 2. SECCIÓN DE INFORMACIÓN (Transparente/Vidrio) */}
+      <View style={styles.infoContainer}>
+        <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.location} numberOfLines={1}>
+            📍 {item.country || 'Ubicación desconocida'}
+        </Text>
         
-        {item.category && (
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>
-              {item.category.toUpperCase()}
-            </Text>
-          </View>
-        )}
+        <Text style={styles.description} numberOfLines={2}>
+          {item.description 
+            ? item.description.replace(/<[^>]*>?/gm, '') 
+            : 'Un lugar histórico fascinante esperando ser descubierto.'}
+        </Text>
       </View>
     </TouchableOpacity>
   );
