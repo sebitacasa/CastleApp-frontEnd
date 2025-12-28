@@ -13,7 +13,8 @@ import StoryCard from '../components/StoryCard';
 import CitySearch from '../components/CitySearch'; 
 import styles from './FeedScreen.styles';
 
-const API_BASE = 'http://192.168.1.33:8080'; 
+//const API_BASE = 'http://192.168.1.33:8080'; 
+const API_BASE = 'http://10.0.2.2:8080'
 const ITEMS_PER_PAGE = 20; 
 
 // Imagen de fondo fija (Coliseo)
@@ -43,6 +44,7 @@ export default function FeedScreen() {
   const retryCount = useRef(0);
 
   // 1. Obtener GPS Inicial
+  // 1. Obtener GPS Inicial
   useEffect(() => {
     (async () => {
       try {
@@ -52,7 +54,14 @@ export default function FeedScreen() {
           setLoading(false);
           return;
         }
-        let loc = await Location.getCurrentPositionAsync({});
+
+        // Intento 1: Pedir ubicación al dispositivo
+        let loc = await Location.getCurrentPositionAsync({
+            accuracy: Location.Accuracy.Balanced,
+            timeout: 5000,
+            maximumAge: 10000
+        });
+        
         console.log("📍 GPS Inicial:", loc.coords.latitude, loc.coords.longitude);
         
         setActiveLocation({
@@ -61,8 +70,20 @@ export default function FeedScreen() {
             label: "Mi Ubicación",
             isManual: false
         });
+
       } catch (error) {
-        console.log("Error GPS:", error);
+        console.log("⚠️ Error GPS (Usando Fallback a Buenos Aires):", error.message);
+        
+        // --- 🔥 AQUÍ ESTÁ LA SOLUCIÓN 🔥 ---
+        // Si el emulador falla, forzamos estas coordenadas para que la App funcione igual
+        setActiveLocation({
+            lat: -34.6037,  // Buenos Aires
+            lon: -58.3816,
+            label: "Ubicación Simulada",
+            isManual: false
+        });
+        
+      } finally {
         setLoading(false);
       }
     })();
@@ -162,14 +183,14 @@ export default function FeedScreen() {
           );
 
           if (incompleteData) {
-              if (retryCount.current < 3) {
+              if (retryCount.current < 6) {
                   console.log(`⏳ Datos incompletos. Intento ${retryCount.current + 1}/3 en 4s...`);
                   retryCount.current += 1;
                   
                   // Esperar 4 segundos y volver a llamar (Modo Silencioso)
                   setTimeout(() => {
                       loadData(1, false, currentLoc, true);
-                  }, 4000);
+                  }, 6000);
               } else {
                   console.log("🛑 Se alcanzó el límite de intentos (3). Se detiene la actualización.");
               }
@@ -269,7 +290,16 @@ export default function FeedScreen() {
             ) : (
                 <FlatList
                     data={locations}
-                    renderItem={({ item }) => <StoryCard item={item} navigation={navigation} />}
+                    renderItem={({ item, index }) => {
+        // Solo mostramos el log de los primeros 2 elementos para no saturar la consola
+        if (index < 2) {
+            console.log(`🔎 ITEM [${index}] - ${item.name}`);
+            console.log("   👉 image_url:", item.image_url);
+            console.log("   👉 images array:", item.images);
+            console.log("   ----------------------------------");
+        }
+        return <StoryCard item={item} navigation={navigation} />;
+    }}
                     keyExtractor={(item) => item.id.toString()}
                     onEndReached={() => { if (hasMore && !loadingMore) loadData(page + 1); }}
                     onEndReachedThreshold={0.5}

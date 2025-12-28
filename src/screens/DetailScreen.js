@@ -22,7 +22,8 @@ import styles, { width, height, IMG_HEIGHT } from './DetailScreen.styles';
 import { checkIsFavorite, toggleFavorite } from '../api/storage.js';
 
 // 👇 CONSTANTE DE IP (Ajusta si es necesario)
-const API_BASE = 'http://192.168.1.33:8080';
+//const API_BASE = 'http://192.168.1.33:8080';
+const API_BASE = 'http://10.0.2.2:8080'
 
 // --- HELPER: IMAGEN POR DEFECTO ---
 const getPlaceholderImage = (category) => {

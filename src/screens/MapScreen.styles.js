@@ -1,108 +1,148 @@
-import { StyleSheet, Dimensions } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 
-const { width } = Dimensions.get('window');
+// 🎨 DEFINICIÓN DEL TEMA (Exportamos también los colores por si se necesitan en la lógica)
+export const THEME = {
+    darkBg: '#1a2230',      // Fondo oscuro principal
+    cardBg: '#242f40',      // Fondo de tarjeta
+    accent: '#38761D',      // Verde principal
+    textWhite: '#FFFFFF',   // Texto blanco
+    textGray: '#B0B0B0',    // Texto gris secundario
+};
 
-export default StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
+export const styles = StyleSheet.create({
+  container: { 
+    flex: 1, 
+    backgroundColor: '#fff' 
   },
-  centerContent: {
-    justifyContent: 'center',
-    alignItems: 'center',
+  
+  centerContent: { 
+    justifyContent: 'center', 
+    alignItems: 'center' 
   },
-  map: {
-    width: width,
-    height: '100%',
+  
+  map: { 
+    width: '100%', 
+    height: '100%' 
   },
-  calloutContainer: {
-    width: 150,
-    padding: 5,
-    alignItems: 'center'
-  },
-  calloutTitle: {
-    fontWeight: 'bold',
-    fontSize: 14,
-    marginBottom: 2,
-    textAlign: 'center'
-  },
-  calloutSubtitle: {
-    fontSize: 12,
-    color: '#007AFF'
-  },
-  listContainer: {
-    position: 'absolute',
-    bottom: 30,
-    left: 0,
-    right: 0,
-    height: 180,
-  },
-  listTitle: {
-    color: '#333',
-    fontWeight: 'bold',
-    fontSize: 16,
-    marginLeft: 20,
-    marginBottom: 10,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    alignSelf: 'flex-start',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    overflow: 'hidden',
-    elevation: 3,
-  },
-  card: {
-    width: 140,
-    height: 110,
-    marginRight: 15,
-    borderRadius: 15,
-    backgroundColor: 'white',
+  
+  backButton: {
+    position: 'absolute', 
+    top: Platform.OS === 'ios' ? 50 : 40, 
+    left: 20,
+    backgroundColor: 'white', 
+    padding: 10, 
+    borderRadius: 25,
     elevation: 5, 
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.2,
+    zIndex: 10 
   },
-  cardSelected: {
-    borderWidth: 3,
-    borderColor: '#e74c3c',
-    transform: [{ scale: 1.05 }],
-  },
-  cardImage: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 15,
-  },
-  cardOverlay: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    borderBottomLeftRadius: 15,
-    borderBottomRightRadius: 15,
-    paddingVertical: 8,
-    paddingHorizontal: 5,
-  },
-  cardText: {
-    color: 'white',
-    fontWeight: 'bold',
-    textAlign: 'center',
-    fontSize: 13,
-  },
+
+  // --- LOADER FLOTANTE ---
   loaderContainer: {
-    position: 'absolute',
-    top: '40%',
+    position: 'absolute', 
+    top: 90, 
     alignSelf: 'center',
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    padding: 20,
-    borderRadius: 15,
-    alignItems: 'center',
-    zIndex: 10,
+    backgroundColor: 'rgba(26, 34, 48, 0.95)', // Fondo oscuro semi-transparente
+    paddingVertical: 8, 
+    paddingHorizontal: 16, 
+    borderRadius: 20,
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    elevation: 6, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 3 }, 
+    shadowOpacity: 0.4,
+    zIndex: 20
   },
-  loaderText: {
-    color: 'white',
-    marginTop: 10,
-    fontWeight: '600',
+  
+  loaderText: { 
+    marginLeft: 10, 
+    color: THEME.textWhite, 
+    fontSize: 13, 
+    fontWeight: '600' 
+  },
+
+  // --- TARJETA FLOTANTE OSCURA ---
+  cardContainer: {
+      position: 'absolute', 
+      bottom: 30, 
+      left: 15, 
+      right: 15,
+      backgroundColor: THEME.cardBg, 
+      borderRadius: 16, 
+      height: 110,
+      flexDirection: 'row', 
+      padding: 10,
+      elevation: 12, 
+      shadowColor: "#000", 
+      shadowOffset: { width: 0, height: 6 }, 
+      shadowOpacity: 0.5, 
+      shadowRadius: 8,
+      borderWidth: 1, 
+      borderColor: 'rgba(255,255,255,0.05)'
+  },
+  
+  cardImageWrapper: { 
+    width: 90, 
+    height: '100%', 
+    borderRadius: 12, 
+    overflow: 'hidden', 
+    marginRight: 12, 
+    backgroundColor: '#1a1a1a' 
+  },
+  
+  cardImage: { 
+    width: '100%', 
+    height: '100%' 
+  }, 
+  
+  textContent: { 
+    flex: 1, 
+    justifyContent: 'center', 
+    paddingRight: 25 
+  }, 
+  
+  cardTitle: { 
+      fontSize: 17, 
+      fontWeight: '700', 
+      color: THEME.textWhite, 
+      marginBottom: 4,
+      textShadowColor: 'rgba(0,0,0,0.3)', 
+      textShadowOffset: {width: 0, height: 1}, 
+      textShadowRadius: 2
+  },
+  
+  cardSubtitle: { 
+    fontSize: 13, 
+    color: THEME.textGray, 
+    marginBottom: 10, 
+    fontWeight: '500' 
+  }, 
+  
+  detailsBtn: {
+      flexDirection: 'row', 
+      alignItems: 'center', 
+      backgroundColor: THEME.accent,
+      paddingVertical: 5, 
+      paddingHorizontal: 12, 
+      borderRadius: 20, 
+      alignSelf: 'flex-start'
+  },
+  
+  detailsBtnText: { 
+    color: 'white', 
+    fontWeight: '700', 
+    fontSize: 11, 
+    textTransform: 'uppercase' 
+  },
+  
+  closeBtn: { 
+    position: 'absolute', 
+    top: 8, 
+    right: 8, 
+    padding: 5, 
+    zIndex: 5 
   }
 });
