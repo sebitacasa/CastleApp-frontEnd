@@ -6,99 +6,86 @@ export default StyleSheet.create({
   cardContainer: {
     width: width * 0.9, 
     alignSelf: 'center',
-    marginBottom: 20,
-    borderRadius: 16,
+    marginBottom: 24,
+    borderRadius: 20,
     
-    // --- EFECTO VIDRIO (FONDO TRANSPARENTE) ---
-    // Este color de fondo se verá detrás del texto.
-    // Usamos un azul muy oscuro pero con alta transparencia (0.6)
-    backgroundColor: 'rgba(30, 42, 61, 0.5)', 
+    // --- ESTILO TARJETA LIMPIA ---
+    backgroundColor: '#FFFFFF', // Fondo BLANCO sólido
     
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)', // Borde fino brillante
-    
-    // Sombra para separar la tarjeta del fondo global
+    // Sombras más suaves y difusas (estilo iOS moderno / Material Design)
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.08, // Mucho más sutil
+    shadowRadius: 12,
+    elevation: 6, // Sombra en Android
     
-    overflow: 'hidden', 
+    overflow: 'hidden', // Para que la imagen no se salga de los bordes redondeados
   },
   
   imageContainer: {
     height: 180,
     width: '100%',
     position: 'relative',
-    // El fondo de la imagen es negro por si tarda en cargar
-    backgroundColor: '#6f6f6fff',
+    backgroundColor: '#E0E0E0', // Gris claro mientras carga
   },
   
   cardImage: {
     width: '100%',
     height: '100%',
     resizeMode: 'cover',
-    // La imagen es opaca, tapará el efecto vidrio en la parte superior (como querías)
   },
   
-  // --- CAMBIO: CARTELITO BORDÓ OSCURO ---
+  // --- BADGE ---
   badge: {
-    
     position: 'absolute',
-    top: 10,
-    right: 10,
-    // Color Bordó / Vino Tinto con un poco de transparencia
-    //backgroundColor: 'rgba(100, 0, 30, 0.9)', 
+    top: 12,
+    right: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)', // Badge blanco
     paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 100, 100, 0.3)', // Borde rojizo sutil
-    shadowColor: 'rgba(176, 110, 130, 0.9)',
+    paddingVertical: 6,
+    borderRadius: 8,
+    shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.15,
     shadowRadius: 3,
-    elevation: 3,
+    elevation: 2,
   },
   
   badgeText: {
-    color: 'rgba(248, 248, 248, 0.9)', // Blanco marfil
+    color: '#B03040', // Texto color vino/bordó para mantener tu identidad
     fontSize: 11,
-    fontWeight: 'bold',
+    fontWeight: '800',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
 
-  // --- CONTENEDOR DE DATOS (TRANSPARENTE) ---
+  // --- CONTENEDOR DE DATOS ---
   infoContainer: {
-    padding: 15,
-    // Al no tener backgroundColor, deja ver el del 'cardContainer' (el vidrio)
+    padding: 20,
+    backgroundColor: '#FFFFFF',
   },
   
+  // --- TEXTOS (Ahora oscuros para contrastar con fondo blanco) ---
   title: {
-    color: 'rgba(237, 237, 237, 0.91)', 
-    fontSize: 19,
-    fontWeight: 'bold',
-    marginBottom: 4,
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowRadius: 3,
+    color: '#1A1A1A', // Casi negro
+    fontSize: 20,
+    fontWeight: '800',
+    marginBottom: 6,
+    letterSpacing: -0.5,
   },
   
   location: {
-    color: 'rgba(196, 196, 196, 0.9)', // Gris claro brillante
-    fontSize: 13,
-    marginBottom: 8,
+    color: '#666666', // Gris medio
+    fontSize: 14,
+    marginBottom: 10,
     fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.5)',
-    textShadowRadius: 2,
+    textTransform: 'uppercase',
   },
   
   description: {
-    color: '#a8a6a6ff', // Blanco suave
-    fontSize: 13,
-    lineHeight: 19,
-    opacity: 0.95,
+    color: '#444444', // Gris oscuro
+    fontSize: 14,
+    lineHeight: 22, // Mayor espaciado para mejor lectura
     fontWeight: '400',
   },
 });

@@ -1,83 +1,94 @@
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform, StatusBar } from 'react-native';
+
+// 1. Definimos la altura fija para usarla en la animación
+export const HEADER_HEIGHT = 265; 
 
 export default StyleSheet.create({
-  // --- EL CONTENEDOR PRINCIPAL YA NO TIENE COLOR ---
   mainContainer: { 
     flex: 1, 
-    // backgroundColor: '#203040', <-- ELIMINADO
+    backgroundColor: '#F4F6F8', 
   },
 
-  // --- NUEVO: ESTILO PARA LA IMAGEN DE FONDO GLOBAL ---
-  backgroundImage: {
-    flex: 1,
+  // 2. EL HEADER AHORA ES ABSOLUTO (Flota sobre la lista)
+  animatedHeaderContainer: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 100, // Para que esté por encima de la lista
+    elevation: 4, // Sombra en Android
+    backgroundColor: '#F4F6F8', // Evita que se vea el fondo al deslizar
+  },
+
+  headerBackground: {
     width: '100%',
-    height: '100%',
+    height: HEADER_HEIGHT, 
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    overflow: 'hidden', 
+    // marginBottom ya no es necesario aquí porque usamos padding en la lista
   },
   
-  // --- NUEVO: CAPA OSCURA GLOBAL (ENSOMBRECIDO) ---
-  globalOverlay: {
+  headerOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)', // Oscurece todo un 60% para que las cards resalten
-    paddingTop: 60, // Espacio para la StatusBar translucent
+    backgroundColor: 'rgba(0, 0, 0, 0.45)', 
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight || 24) + 35 : 60,
+    justifyContent: 'flex-end', 
+    paddingBottom: 10,
   },
-  
-  // --- NAV BAR (Ahora es transparente) ---
-  navBar: { 
-    // Quitamos padding superior porque ahora lo maneja globalOverlay
-    paddingBottom: 15,
-    marginBottom: 10, 
-    zIndex: 10, 
-    // Eliminamos bordes y sombras porque ya no es una "caja" separada
-    // elevation: 10, shadowColor: '#000', ... etc.
-  },
-  
-  // --- ELIMINAMOS EL OVERLAY VIEJO ---
-  // overlay: { ... } <-- ELIMINADO
 
   navTopRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     paddingHorizontal: 20, 
-    marginBottom: 15,
+    marginBottom: 15, 
+    alignItems: 'center',
   },
+  
   logoRow: { 
     flexDirection: 'row', 
     alignItems: 'center' 
   },
+  
   navTitle: { 
     color: 'white', 
-    fontSize: 24, 
-    fontWeight: 'bold', 
+    fontSize: 26, 
+    fontWeight: '800', 
     marginLeft: 8,
-    textShadowColor: 'rgba(0,0,0,0.8)', 
-    textShadowOffset: { width: 1, height: 1 },
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0,0,0,0.5)', 
+    textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
   
   catBtn: { 
-    paddingHorizontal: 18, 
-    paddingVertical: 6, 
-    borderRadius: 20, 
-    backgroundColor: 'rgba(255,255,255,0.2)', // Un poco más transparente
-    marginRight: 10,
+    paddingHorizontal: 20, 
+    paddingVertical: 8, 
+    borderRadius: 25, 
+    backgroundColor: 'rgba(255,255,255,0.25)', 
+    marginRight: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)'
+    borderColor: 'rgba(255,255,255,0.4)'
   },
   catBtnActive: { 
-    backgroundColor: 'white',
-    borderColor: 'white'
+    backgroundColor: '#FFFFFF',
+    borderColor: '#FFFFFF',
+    transform: [{ scale: 1.05 }] 
   },
   catText: { 
     color: 'white', 
-    fontWeight: 'bold' 
+    fontWeight: '600',
+    fontSize: 13,
   },
   catTextActive: { 
-    color: '#000' // Texto negro para el botón activo blanco
+    color: '#203040', 
+    fontWeight: 'bold'
   },
   
   centerLoading: { 
     flex: 1, 
     justifyContent: 'center', 
-    alignItems: 'center' 
+    alignItems: 'center',
+    marginTop: HEADER_HEIGHT // Ajuste para que el loading no quede tapado
   }
 });

@@ -10,7 +10,8 @@ import {
   Platform, 
   Alert, 
   FlatList,
-  Modal
+  Modal,
+  ActivityIndicator // <--- IMPORTANTE: Agregado para el spinner
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
@@ -20,10 +21,14 @@ import styles, { width, height, IMG_HEIGHT } from './DetailScreen.styles';
 
 // 👇 IMPORTAMOS EL SERVICIO DE FAVORITOS
 import { checkIsFavorite, toggleFavorite } from '../api/storage.js';
+import Footer from '../components/Footer.js';
 
 // 👇 CONSTANTE DE IP (Ajusta si es necesario)
-//const API_BASE = 'http://192.168.1.33:8080';
-const API_BASE = 'http://10.0.2.2:8080'
+//const API_BASE = 'http://10.0.2.2:8080';
+const API_BASE = 'http://192.168.1.33:8080';
+
+// Límite visual para decidir si mostrar botón (fallback local)
+const MAX_LENGTH = 100; 
 
 // --- HELPER: IMAGEN POR DEFECTO ---
 const getPlaceholderImage = (category) => {
@@ -44,6 +49,11 @@ export default function DetailScreen({ route, navigation }) {
   const [isFullScreenVisible, setIsFullScreenVisible] = useState(false);
   const [fullScreenIndex, setFullScreenIndex] = useState(0);
 
+  // 📖 ESTADOS PARA LAZY LOADING DE DESCRIPCIÓN
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [fullDescription, setFullDescription] = useState(null); // Aquí guardamos el texto largo
+  const [loadingDesc, setLoadingDesc] = useState(false);      // Spinner de carga
+
   // 1. CARGA INICIAL
   useEffect(() => {
     if (locationData && locationData.id) {
@@ -61,6 +71,36 @@ export default function DetailScreen({ route, navigation }) {
   const openFullScreen = (index) => {
     setFullScreenIndex(index);
     setIsFullScreenVisible(true);
+  };
+
+  // 4. MANEJADOR DE "LEER MÁS" (FETCH AL ENDPOINT)
+  const handleReadMore = async () => {
+      // A) Si ya tenemos el texto completo, solo alternamos la vista
+      if (fullDescription) {
+          setIsExpanded(!isExpanded);
+          return;
+      }
+
+      // B) Si no, lo descargamos
+      try {
+          setLoadingDesc(true);
+          const response = await fetch(`${API_BASE}/api/localizaciones/${locationData.id}/description`);
+          
+          if (response.ok) {
+              const data = await response.json();
+              if (data.description) {
+                  setFullDescription(data.description);
+                  setIsExpanded(true); // Expandimos automáticamente al terminar
+              }
+          } else {
+              console.warn("No se pudo obtener la descripción completa.");
+          }
+      } catch (error) {
+          console.error("Error fetching description:", error);
+          Alert.alert("Error", "No se pudo cargar la historia completa.");
+      } finally {
+          setLoadingDesc(false);
+      }
   };
 
   if (!locationData) return null;
@@ -111,7 +151,47 @@ export default function DetailScreen({ route, navigation }) {
     Linking.openURL(url).catch(() => Alert.alert("Error", "No se pudo abrir la aplicación de mapas."));
   };
 
-  // --- RENDERIZADO ---
+  // --- LÓGICA DE RENDERIZADO DE DESCRIPCIÓN (MODIFICADA) ---
+  const renderDescription = () => {
+      // Texto corto que viene del feed (ya viene recortado con "...")
+      const shortText = locationData.description && locationData.description.length > 5 
+          ? locationData.description 
+          : 'Información histórica no disponible por el momento.';
+
+      // Determinamos qué texto mostrar
+      const textToShow = (isExpanded && fullDescription) ? fullDescription : shortText;
+
+      // Decidimos si mostramos el botón "Leer más"
+      // Se muestra si el texto es largo, si termina en "...", o si ya tenemos el full text cargado
+      const shouldShowButton = shortText.endsWith('...') || shortText.length > MAX_LENGTH || fullDescription;
+
+      return (
+          <View>
+              <Text style={styles.description}>
+                  {textToShow}
+              </Text>
+              
+              {shouldShowButton && (
+                  <TouchableOpacity 
+                      onPress={handleReadMore} 
+                      style={{ marginTop: 8, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center' }}
+                      activeOpacity={0.7}
+                      disabled={loadingDesc}
+                  >
+                      {loadingDesc && (
+                          <ActivityIndicator size="small" color="#203040" style={{ marginRight: 6 }} />
+                      )}
+                      
+                      <Text style={styles.readMoreText}>
+                          {loadingDesc ? 'Cargando historia...' : (isExpanded ? 'Leer menos' : 'Leer más')}
+                      </Text>
+                  </TouchableOpacity>
+              )}
+          </View>
+      );
+  };
+
+  // --- RENDER ITEMS CARRUSEL ---
   const renderCarouselItem = ({ item, index }) => {
     const imageUrl = getProcessedUrl(item);
     if (!imageUrl) return null;
@@ -149,7 +229,7 @@ export default function DetailScreen({ route, navigation }) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      <ScrollView contentContainerStyle={{ paddingBottom: 50 }} showsVerticalScrollIndicator={false}>
+      <ScrollView contentContainerStyle={{ paddingBottom: 0 }} showsVerticalScrollIndicator={false} > 
         
         {/* CARRUSEL */}
         <View style={styles.carouselContainer}>
@@ -167,11 +247,11 @@ export default function DetailScreen({ route, navigation }) {
           />
 
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-            <Ionicons name="arrow-back" size={24} color="#fff" />
+            <Ionicons name="arrow-back" size={24} color="#203040" />
           </TouchableOpacity>
 
           <TouchableOpacity style={styles.favButton} onPress={handleToggleFav} activeOpacity={0.8}>
-            <Ionicons name={isFav ? "heart" : "heart-outline"} size={26} color={isFav ? "#ff4757" : "#fff"} />
+            <Ionicons name={isFav ? "heart" : "heart-outline"} size={26} color={isFav ? "#ff4757" : "#203040"} />
           </TouchableOpacity>
 
           {gallery.length > 1 && (
@@ -224,14 +304,13 @@ export default function DetailScreen({ route, navigation }) {
 
           <View style={styles.divider} />
 
+          {/* SECCIÓN HISTORIA CON LAZY LOADING */}
           <Text style={styles.sectionTitle}>Historia</Text>
-          <Text style={styles.description}>
-            {locationData.description && locationData.description.length > 10 
-                ? locationData.description 
-                : 'No hay descripción histórica disponible para este lugar. Es posible que pronto se añada más información sobre este sitio.'}
-          </Text>
+          {renderDescription()}
 
         </View>
+        
+        <Footer />
       </ScrollView>
 
       {/* MODAL PANTALLA COMPLETA */}
