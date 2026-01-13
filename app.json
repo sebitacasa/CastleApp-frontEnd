@@ -1,16 +1,17 @@
 {
   "expo": {
-    "name": "nombre-de-mi-app-mapas",
-    "slug": "nombre-de-mi-app-mapas",
+   "name": "CastleApp",
+    "slug": "castleapp-dev",
+    "scheme": "castleapp-dev",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "permissions": [
-        "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"],
-        "usesCleartextTraffic": true,
+      "ACCESS_COARSE_LOCATION",
+      "ACCESS_FINE_LOCATION"
+    ],
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -20,18 +21,18 @@
       "supportsTablet": true
     },
     "android": {
-      "package": "com.tuapp...",
+      "package": "com.sebit.castleapp",
       "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
-      },
-      
-     
-      "edgeToEdgeEnabled": true
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      "expo-web-browser"
+    ]
   }
 }

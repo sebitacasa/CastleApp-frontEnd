@@ -19,7 +19,22 @@ const CitySearch = ({ onLocationSelect }) => {
       // Europa Central y Norte
       'DE', 'AT', 'CH', 'NL', 'BE', 'LU', 'LI', // Alemania, Austria, Suiza, etc.
       // Europa Sur/Oeste
-      'ES', 'FR', 'IT', 'PT', 'GB', 'IE', 'AD', 'MC', 'MT', 'SM', 'VA',
+      'ES', 'FR', 'IT', 'PT', 'GB', 'IE', 'AD', 'MC', 'MT', 'SM', 'VA', 
+    'GR', 'CY', // Grecia, Chipre
+
+    // Europa Central y Norte (DACH, Benelux, Escandinavia)
+    'DE', 'AT', 'CH', 'LI', // Alemania, Austria, Suiza, Liechtenstein
+    'NL', 'BE', 'LU',       // Países Bajos, Bélgica, Luxemburgo
+    'DK', 'SE', 'NO', 'FI', 'IS', // Dinamarca, Suecia, Noruega, Finlandia, Islandia
+
+    // Europa del Este y Bálticos
+    'PL', 'CZ', 'SK', 'HU', // Polonia, Chequia, Eslovaquia, Hungría
+    'EE', 'LV', 'LT',       // Estonia, Letonia, Lituania
+    'RO', 'BG', 'MD',       // Rumania, Bulgaria, Moldavia
+    'UA', 'BY', 'RU',       // Ucrania, Bielorrusia, Rusia
+
+    // Balcanes
+    'AL', 'HR', 'BA', 'RS', 'ME', 'MK', 'SI', 'XK' /
       // Escandinavia
       'DK', 'SE', 'NO', 'FI', 'IS',
       // Europa Este (Opcional, según tu alcance)

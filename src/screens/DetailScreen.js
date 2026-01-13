@@ -24,8 +24,8 @@ import { checkIsFavorite, toggleFavorite } from '../api/storage.js';
 import Footer from '../components/Footer.js';
 
 // 👇 CONSTANTE DE IP (Ajusta si es necesario)
-//const API_BASE = 'http://10.0.2.2:8080';
-const API_BASE = 'http://192.168.1.33:8080';
+const API_BASE = 'http://10.0.2.2:8080';
+//const API_BASE = 'http://192.168.1.33:8080';
 
 // Límite visual para decidir si mostrar botón (fallback local)
 const MAX_LENGTH = 100; 

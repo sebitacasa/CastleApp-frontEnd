@@ -6,7 +6,9 @@ node_modules/
 dist/
 web-build/
 expo-env.d.ts
-
+android/
+ios/
+.expo/
 # --- SEGURIDAD ---
 # Ignora archivos de entorno (aquí podrías tener claves de Maps para el mapa visual)
 .env

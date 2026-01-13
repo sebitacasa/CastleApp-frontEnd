@@ -3,7 +3,8 @@ import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import styles from './StoryCard.styles';
 
 // Tu configuración de API
-const API_BASE = 'http://192.168.1.33:8080';
+// +const API_BASE = 'http://192.168.1.33:8080';
+const API_BASE =  'http://10.0.2.2:8080'
 const BACKUP_URL = 'https://images.pexels.com/photos/2422265/pexels-photo-2422265.jpeg?auto=compress&cs=tinysrgb&w=800';
 
 const StoryCard = memo(({ item, navigation }) => {

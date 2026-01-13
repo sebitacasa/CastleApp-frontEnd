@@ -11,8 +11,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { styles, THEME } from './MapScreen.styles';
 
 // ⚠️ AJUSTA TU IP AQUÍ
-//const API_BASE = 'http://10.0.2.2:8080';
-const API_BASE = 'http://192.168.1.33:8080';
+const API_BASE = 'http://10.0.2.2:8080';
+//const API_BASE = 'http://192.168.1.33:8080';
 
 export default function MapScreen() {
   const mapRef = useRef(null);
