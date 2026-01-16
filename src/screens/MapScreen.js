@@ -12,6 +12,7 @@ import { styles, THEME } from './MapScreen.styles';
 
 // ⚠️ AJUSTA TU IP AQUÍ
 const API_BASE = 'http://10.0.2.2:8080';
+//const API_BASE! = 'http://10.0.2.2:8080';
 
 // --- 🌑 ESTILO DE MAPA "DARK LUXURY" ---
 const LUXURY_MAP_STYLE = [
