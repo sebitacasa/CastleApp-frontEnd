@@ -1,4 +1,6 @@
-{
+import 'dotenv/config';
+
+export default {
   "expo": {
     "name": "CastleApp",
     "slug": "castleapp-dev",
@@ -24,10 +26,10 @@
         "backgroundColor": "#ffffff"
       },
       "config": {
-    "googleMaps": {
-      "apiKey": "AIzaSyDcoTCoGGcsrrr0ynSWys_g3KMJ3Af-9Kg"
-    }
-  }
+        "googleMaps": {
+          "apiKey": process.env.GOOGLE_MAPS_API_KEY
+        }
+      }
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -48,4 +50,4 @@
       "url": "https://u.expo.dev/f89970b0-4070-454b-9287-d8f5ea4fd943"
     }
   }
-}
+};
