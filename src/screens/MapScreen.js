@@ -7,12 +7,61 @@ import * as Location from 'expo-location';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
-// 👇 IMPORTAMOS LOS ESTILOS Y EL TEMA (Nuevo estilo)
+// 👇 IMPORTAMOS LOS ESTILOS Y EL TEMA
 import { styles, THEME } from './MapScreen.styles';
 
 // ⚠️ AJUSTA TU IP AQUÍ
 const API_BASE = 'http://10.0.2.2:8080';
-//const API_BASE = 'http://192.168.1.33:8080';
+
+// --- 🌑 ESTILO DE MAPA "DARK LUXURY" ---
+const LUXURY_MAP_STYLE = [
+  {
+    "elementType": "geometry",
+    "stylers": [{ "color": "#212121" }] // Fondo base oscuro
+  },
+  {
+    "elementType": "labels.icon",
+    "stylers": [{ "visibility": "off" }] // Oculta iconos de Google
+  },
+  {
+    "elementType": "labels.text.fill",
+    "stylers": [{ "color": "#757575" }] // Texto gris suave
+  },
+  {
+    "elementType": "labels.text.stroke",
+    "stylers": [{ "color": "#212121" }] // Borde del texto oscuro
+  },
+  {
+    "featureType": "administrative",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#757575" }] // Fronteras
+  },
+  {
+    "featureType": "poi",
+    "elementType": "labels.text.fill",
+    "stylers": [{ "color": "#757575" }]
+  },
+  {
+    "featureType": "poi.park",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#181818" }] // Parques más oscuros
+  },
+  {
+    "featureType": "road",
+    "elementType": "geometry.fill",
+    "stylers": [{ "color": "#2c2c2c" }] // Calles gris oscuro
+  },
+  {
+    "featureType": "road.highway",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#3c3c3c" }] // Autopistas un poco más claras
+  },
+  {
+    "featureType": "water",
+    "elementType": "geometry",
+    "stylers": [{ "color": "#000000" }] // Agua totalmente negra
+  }
+];
 
 export default function MapScreen() {
   const mapRef = useRef(null);
@@ -26,7 +75,7 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState(null);
   const [fetchingLocation, setFetchingLocation] = useState(true);
 
-  // --- 1. HELPER DE LIMPIEZA DE DATOS (Para el estado general) ---
+  // --- 1. HELPER DE LIMPIEZA DE DATOS ---
   const cleanData = (data) => {
       return data.map(item => {
           let cleanImg = item.image_url;
@@ -45,46 +94,37 @@ export default function MapScreen() {
       });
   };
 
-  // --- 2. 🔥 HELPER "PROXY" (SOLUCIÓN ERROR 403) ---
-  // Esta función faltaba en tu código nuevo. Es la que pide la foto a TU servidor.
+  // --- 2. HELPER "PROXY" (SOLUCIÓN ERROR 403) ---
   const getSecureImage = (item) => {
       if (!item) return 'https://via.placeholder.com/150';
-
-      // Aunque usemos cleanData antes, nos aseguramos de tener una URL base limpia aquí
       let rawUrl = item.image_url;
-      
       if (!rawUrl) return 'https://via.placeholder.com/150';
-
-      // Si la URL ya es de tu servidor local, no hacemos nada
       if (rawUrl.includes(API_BASE)) return rawUrl;
-
-      // 🔥 LA MAGIA: Convertimos la URL directa en una URL PROXY
-      // El celular le pide la foto a TU servidor, no a Wikipedia
       return `${API_BASE}/api/image-proxy?url=${encodeURIComponent(rawUrl)}`;
   };
 
-  // --- 3. OBTENER UBICACIÓN ---
+  // --- 3. OBTENER UBICACIÓN (FORZADO A SAN TELMO + FALLBACK) ---
   useEffect(() => {
     (async () => {
       try {
-        let { status } = await Location.requestForegroundPermissionsAsync();
-        if (status !== 'granted') {
-          setFetchingLocation(false);
-          return;
-        }
-        let loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-        const userCoords = {
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-          latitudeDelta: 0.05,
-          longitudeDelta: 0.05,
+        // 👇 CONFIGURACIÓN FIJA: SAN TELMO, CABA (Para probar el mapa oscuro)
+        const sanTelmoCoords = {
+          latitude: -34.6212,  // Latitud San Telmo
+          longitude: -58.3731, // Longitud San Telmo
+          latitudeDelta: 0.015, 
+          longitudeDelta: 0.015,
         };
-        setUserLocation(userCoords);
+
+        console.log("📍 Mapa: Forzando ubicación en San Telmo (Modo Dark)");
+        setUserLocation(sanTelmoCoords);
+
         if (!route.params?.targetCoordinate) {
-            fetchNearbyLocations(userCoords);
+            fetchNearbyLocations(sanTelmoCoords);
         }
+
       } catch (error) {
-        console.log("Error GPS:", error);
+        console.log("Error al iniciar mapa:", error);
+        // Fallback (Obelisco)
         const fallback = { latitude: -34.6037, longitude: -58.3816, latitudeDelta: 0.05, longitudeDelta: 0.05 };
         setUserLocation(fallback);
         fetchNearbyLocations(fallback);
@@ -98,7 +138,6 @@ export default function MapScreen() {
   useEffect(() => {
     if (selectedLocation) {
         const updatedLoc = locations.find(l => l.id === selectedLocation.id);
-        // Si detectamos que la imagen cambió (se cargó en la DB), actualizamos
         if (updatedLoc && updatedLoc.image_url !== selectedLocation.image_url) {
             console.log(`✨ FOTO LISTA PARA: ${updatedLoc.name}`);
             setSelectedLocation(updatedLoc);
@@ -145,9 +184,9 @@ export default function MapScreen() {
   // --- RENDERIZADO ---
   if (fetchingLocation && !userLocation) {
     return (
-      <View style={[styles.container, styles.centerContent, { backgroundColor: THEME.darkBg }]}>
-        <ActivityIndicator size="large" color={THEME.accent} />
-        <Text style={{marginTop: 15, color: THEME.textWhite, fontWeight: 'bold'}}>Iniciando mapa...</Text>
+      <View style={[styles.container, styles.centerContent, { backgroundColor: '#212121' }]}>
+        <ActivityIndicator size="large" color="#FFD700" />
+        <Text style={{marginTop: 15, color: 'white', fontWeight: 'bold'}}>Cargando Mapa...</Text>
       </View>
     );
   }
@@ -158,6 +197,10 @@ export default function MapScreen() {
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
+        
+        // 👇 APLICAMOS EL ESTILO DARK LUXURY AQUÍ
+        customMapStyle={LUXURY_MAP_STYLE}
+        
         showsUserLocation={true} 
         showsMyLocationButton={true}
         initialRegion={userLocation}
@@ -168,13 +211,14 @@ export default function MapScreen() {
           <Marker
             key={`${loc.id}-${index}`}
             coordinate={{ latitude: loc.latitude, longitude: loc.longitude }}
+            // Puedes probar pinColor={'gold'} si React Native Maps lo soporta, o dejar el default por ahora
             pinColor={ loc.category === 'Museums' ? 'blue' : 'red' }
             onPress={() => onMarkerPress(loc)}
           />
         ))}
       </MapView>
 
-      {/* LOADER FLOTANTE (Nuevo Estilo) */}
+      {/* LOADER FLOTANTE */}
       {loading && (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="small" color={THEME.textWhite} />
@@ -182,7 +226,7 @@ export default function MapScreen() {
         </View>
       )}
 
-      {/* TARJETA DE DETALLE (Nuevo Estilo + Funcionalidad Proxy) */}
+      {/* TARJETA DE DETALLE */}
       {selectedLocation && (
         <TouchableOpacity 
             style={styles.cardContainer}
@@ -191,7 +235,6 @@ export default function MapScreen() {
         >
             <View style={styles.cardImageWrapper}>
                 <Image 
-                    // 🔥 AQUÍ ESTÁ EL FIX: Usamos getSecureImage en lugar de la URL directa
                     source={{ uri: getSecureImage(selectedLocation) }}
                     style={styles.cardImage}
                     resizeMode="cover"
@@ -214,8 +257,9 @@ export default function MapScreen() {
         </TouchableOpacity>
       )}
 
+      {/* BOTÓN ATRÁS (Ahora blanco para que se vea en el mapa negro) */}
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
-         <Ionicons name="arrow-back" size={24} color="black" />
+         <Ionicons name="arrow-back" size={24} color="white" />
       </TouchableOpacity>
     </View>
   );

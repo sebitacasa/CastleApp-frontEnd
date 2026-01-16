@@ -10,6 +10,12 @@ export default StyleSheet.create({
     backgroundColor: '#F4F6F8', 
   },
 
+  menuHeader: {
+      padding: 15,
+      alignItems: 'center', // <--- Esto centra la foto y el texto
+      justifyContent: 'center'
+  },
+
   // El Header ahora es absoluto (Flota sobre la lista)
   animatedHeaderContainer: {
     position: 'absolute',

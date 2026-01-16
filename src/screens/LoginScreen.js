@@ -1,189 +1,101 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { 
-  View, Text, TextInput, TouchableOpacity, StyleSheet, 
-  ActivityIndicator, Image, Platform, Alert 
-} from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons'; 
-import * as Google from 'expo-auth-session/providers/google';
-import * as WebBrowser from 'expo-web-browser';
-import * as AuthSession from 'expo-auth-session';
-import { makeRedirectUri } from 'expo-auth-session';
-
+import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { AuthContext } from '../context/AuthContext';
 
-// Necesario para que el navegador de autenticación funcione correctamente en Expo Go
-WebBrowser.maybeCompleteAuthSession();
-
 const LoginScreen = ({ navigation }) => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  
-  const { login, loginWithGoogle, isLoading } = useContext(AuthContext);
+  const { loginWithGoogle, isLoading } = useContext(AuthContext);
+  const [isGoogleLoading, setGoogleLoading] = useState(false);
 
-  // 1. Calculamos la URI de redirección
-  // Esto genera la dirección exacta tipo: https://auth.expo.io/@tu-usuario/tu-slug
-//   const redirectUri = AuthSession.makeRedirectUri({
-//     path: 'auth.expo.io'
-//   });
-
-  // 2. LOG DE DEPURACIÓN (Se ejecuta al abrir la pantalla)
+  // 1. Configuración Inicial (Solo se ejecuta una vez)
   useEffect(() => {
-    console.log("============================================");
-    console.log("⚠️ URI PARA GOOGLE CLOUD CONSOLE:");
-    console.log(redirectUri);
-    console.log("============================================");
-
-    // Descomenta la siguiente línea si quieres ver la alerta en el celular:
-    // Alert.alert("Copia esta URL en Google Console", redirectUri);
+    GoogleSignin.configure({
+      // ¡Aquí usamos tu ID Web! Google lo usa para validar el token internamente.
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, 
+      offlineAccess: true,
+      forceCodeForRefreshToken: true,
+    });
   }, []);
 
-  //const redirectUri = "https://auth.expo.io/@sebit/castleapp";
+  // 2. La Función de Login
+// En LoginScreen.js (Reemplaza la función signIn completa)
 
-// const redirectUri = makeRedirectUri({
-//     useProxy: true,
-//   });
+  const signIn = async () => {
+    setGoogleLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const response = await GoogleSignin.signIn();
+      
+      console.log("📦 TIPO DE RESPUESTA:", typeof response);
+      
+      // 1. APLICAR INTELIGENCIA DE FORMATO
+      // A veces la respuesta llega anidada en 'data'
+      let userInfo = response.data || response;
+      
+      // Si por alguna razón extraña llega como texto, lo convertimos
+      if (typeof userInfo === 'string') {
+          try { userInfo = JSON.parse(userInfo); } catch(e) {}
+      }
 
-  const redirectUri = "https://auth.expo.io/@sebit/castleapp-dev";
-  // --- CONFIGURACIÓN DE GOOGLE ---
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-    redirectUri: redirectUri, // Usamos la URI generada explícitamente
-  });
+      console.log("🔍 Buscando token en:", Object.keys(userInfo));
 
-  // Escuchar la respuesta de Google
-  useEffect(() => {
-    if (response?.type === 'success') {
-      const { authentication } = response;
-      loginWithGoogle(authentication.accessToken);
-    } else if (response?.type === 'error') {
-      console.error("Error en respuesta de Google:", response.error);
-      Alert.alert("Error de Login", "No se pudo conectar con Google. Verifica la consola.");
+      // 2. ESTRATEGIA DE RESCATE MULTI-NIVEL 
+      // Buscamos el token en todas las ubicaciones posibles
+      const token = userInfo.idToken || userInfo.user?.idToken || userInfo.serverAuthCode;
+      const user = userInfo.user || userInfo;
+
+      if (token) {
+        console.log("✅ ¡TOKEN ENCONTRADO! Longitud:", token.length);
+        // ¡Aquí está la magia!
+        loginWithGoogle(token, user);
+      } else {
+        console.log("⚠️ El objeto no tenía token visible:", userInfo);
+        Alert.alert("Error", "Google conectó pero no entregó el pase (Token).");
+      }
+      
+    } catch (error) {
+      console.log("❌ Error:", error);
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // Nada, el usuario cerró
+      } else {
+        Alert.alert("Error Login", error.message);
+      }
+    } finally {
+      setGoogleLoading(false);
     }
-  }, [response]);
-  // --------------------------------
+  };
 
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        <Text style={styles.title}>CastleApp 🏰</Text>
-        {/* 👇 AGREGA ESTO TEMPORALMENTE 👇 */}
-        <Text style={{color: 'red', textAlign: 'center', margin: 10, fontSize: 12}}>
-           URI ACTUAL: {redirectUri}
-        </Text>
-        {/* 👆 -------------------------- 👆 */}
-        <Text style={styles.subtitle}>Bienvenido de nuevo</Text>
-
-        {/* INPUTS NORMALES */}
-        <TextInput
-          style={styles.input}
-          placeholder="Correo electrónico"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Contraseña"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-        />
-
-        <TouchableOpacity 
-          style={styles.button} 
-          onPress={() => login(email, password)}
-        >
-          {isLoading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.buttonText}>Iniciar Sesión</Text>
-          )}
-        </TouchableOpacity>
-
-        {/* --- SEPARADOR --- */}
-        <View style={styles.separatorContainer}>
-            <View style={styles.separatorLine} />
-            <Text style={styles.separatorText}>o continúa con</Text>
-            <View style={styles.separatorLine} />
-        </View>
-
-        {/* --- BOTÓN DE GOOGLE --- */}
-        <TouchableOpacity 
-          style={styles.googleButton} 
-          disabled={!request}
-          onPress={() => promptAsync()}
-        >
-          <MaterialCommunityIcons name="google" size={20} color="#DB4437" style={{ marginRight: 10 }} />
-          <Text style={styles.googleButtonText}>Google</Text>
-        </TouchableOpacity>
-
-        {/* FOOTER */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>¿No tienes cuenta? </Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.link}>Regístrate aquí</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+      <Text style={styles.title}>Login Nativo Real 🛡️</Text>
+      
+      <TouchableOpacity
+        style={styles.googleButton}
+        onPress={signIn}
+        disabled={isGoogleLoading}
+      >
+        {isGoogleLoading ? (
+          <ActivityIndicator color="#555" />
+        ) : (
+          <>
+            <MaterialCommunityIcons name="google" size={24} color="#DB4437" />
+            <Text style={styles.text}>  Entrar con Google</Text>
+          </>
+        )}
+      </TouchableOpacity>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', backgroundColor: '#f0f2f5', padding: 20 },
-  content: { backgroundColor: 'white', padding: 30, borderRadius: 20, elevation: 5 },
-  title: { fontSize: 32, fontWeight: 'bold', color: '#203040', textAlign: 'center', marginBottom: 10 },
-  subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 20 },
-  
-  input: { 
-    backgroundColor: '#f9f9f9', borderWidth: 1, borderColor: '#ddd', 
-    borderRadius: 10, padding: 15, marginBottom: 15, fontSize: 16 
+  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
+  title: { fontSize: 24, marginBottom: 30, fontWeight: 'bold' },
+  googleButton: { 
+    flexDirection: 'row', backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd',
+    paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, alignItems: 'center', elevation: 2
   },
-  
-  button: { 
-    backgroundColor: '#203040', padding: 15, borderRadius: 10, alignItems: 'center', marginTop: 5 
-  },
-  buttonText: { color: 'white', fontSize: 18, fontWeight: 'bold' },
-
-  separatorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 20,
-  },
-  separatorLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#eee',
-  },
-  separatorText: {
-    marginHorizontal: 10,
-    color: '#999',
-    fontSize: 14,
-  },
-
-  googleButton: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#ddd',
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 10,
-  },
-  googleButtonText: {
-    color: '#555',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-
-  footer: { flexDirection: 'row', justifyContent: 'center', marginTop: 15 },
-  footerText: { color: '#666' },
-  link: { color: '#203040', fontWeight: 'bold' }
+  text: { color: '#555', fontWeight: 'bold', fontSize: 16 }
 });
 
 export default LoginScreen;

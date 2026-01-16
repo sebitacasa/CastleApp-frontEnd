@@ -29,7 +29,7 @@ export const styles = StyleSheet.create({
     position: 'absolute', 
     top: Platform.OS === 'ios' ? 50 : 40, 
     left: 20,
-    backgroundColor: 'white', 
+    backgroundColor: 'rgba(0,0,0,0.5)', 
     padding: 10, 
     borderRadius: 25,
     elevation: 5, 

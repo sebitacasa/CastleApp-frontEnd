@@ -12,11 +12,11 @@ export default function Footer() {
       <MaterialCommunityIcons name="bank" size={32} color="#4DA8DA" style={{ marginBottom: 10 }} />
       
       <Text style={styles.title}>CastleApp</Text>
-      <Text style={styles.subtitle}>Descubriendo el pasado, un lugar a la vez.</Text>
+      <Text style={styles.subtitle}>Discovering the past, one place at a time.</Text>
       
       <View style={styles.divider} />
       
-      <Text style={styles.copyright}>© {currentYear} CastleApp. Todos los derechos reservados.</Text>
+      <Text style={styles.copyright}>© {currentYear} CastleApp. All rights reserved.</Text>
     </View>
   );
 }

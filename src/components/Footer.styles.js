@@ -3,7 +3,7 @@ import { StyleSheet } from 'react-native';
 export default StyleSheet.create({
   container: {
     width: '100%',
-    backgroundColor: '#1a2533', // Azul marino oscuro
+    backgroundColor: '#ffffff', // Azul marino oscuro
     
     // --- CAMBIOS PARA DISEÑO PLANO ---
     marginTop: 0,            // Eliminamos la separación con el contenido de arriba
@@ -19,7 +19,7 @@ export default StyleSheet.create({
   
   // El resto se mantiene igual o con ajustes mínimos
   title: {
-    color: '#FFFFFF',
+    color: '#000000',
     fontSize: 18, // Un poco más discreto
     fontWeight: 'bold',
     letterSpacing: 0.5,

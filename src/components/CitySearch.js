@@ -155,7 +155,7 @@ const CitySearch = ({ onLocationSelect }) => {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Buscar ciudad (ej: Roma)..."
+          placeholder="Search City..."
           value={query}
           onChangeText={handleTextChange} // <--- Usamos la nueva función
           placeholderTextColor="#666"
