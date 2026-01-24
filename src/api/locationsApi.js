@@ -1,8 +1,9 @@
 import axios from 'axios';
 
-const BASE_URL = 'http://10.0.2.2:8080/api'; 
+//const BASE_URL = 'http://10.0.2.2:8080/api'; 
 //const BASE_URL = 'http://192.168.1.33:8080/api';
 
+const BASE_URL = 'https://castleapp-backend-production.up.railway.app/api';
 const api = axios.create({
     baseURL: BASE_URL,
     timeout: 60000,

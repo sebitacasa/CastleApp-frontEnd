@@ -21,10 +21,15 @@ export default {
     },
     "android": {
       "package": "com.sebit.castleapp",
+      "versionCode": 1, // ⚠️ CRÍTICO: Necesario para subir a Google Play. Súbelo a 2, 3... en futuras actualizaciones.
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION"
+      ],
       "config": {
         "googleMaps": {
           "apiKey": process.env.GOOGLE_MAPS_API_KEY

@@ -13,7 +13,9 @@ import { FavoritesContext } from '../context/FavoritesContext';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-const API_BASE = 'http://10.0.2.2:8080';
+//const API_BASE = 'http://10.0.2.2:8080';
+// Debe ser https (seguro) y terminar en up.railway.app
+const API_BASE = 'https://castleapp-backend-production.up.railway.app';
 
 // --- 🎨 PALETA DE COLORES "SCRATCH MAP" ---
 const THEME = {

@@ -11,7 +11,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { styles, THEME } from './MapScreen.styles';
 
 // ⚠️ AJUSTA TU IP AQUÍ
-const API_BASE = 'http://10.0.2.2:8080';
+//const API_BASE = 'http://10.0.2.2:8080';
+// Debe ser https (seguro) y terminar en up.railway.app
+const API_BASE = 'https://castleapp-backend-production.up.railway.app';
 //const API_BASE!! = 'http://10.0.2.2:8080';
 
 // --- 🌑 ESTILO DE MAPA "DARK LUXURY" ---

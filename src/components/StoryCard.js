@@ -2,7 +2,7 @@ import React, { useState, useMemo, memo } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
-// --- 🎨 PALETA DE COLORES "SCRATCH MAP" (Coincide con FeedScreen) ---
+// --- 🎨 PALETA DE COLORES "SCRATCH MAP" ---
 const THEME = {
   cardBg: '#1E1E1E',       // Gris oscuro para la tarjeta
   gold: '#D4AF37',         // Dorado Clásico
@@ -13,7 +13,9 @@ const THEME = {
 };
 
 // Configuración API
-const API_BASE = 'http://10.0.2.2:8080';
+//const API_BASE = 'http://10.0.2.2:8080';
+// Debe ser https (seguro) y terminar en up.railway.app
+const API_BASE = 'https://castleapp-backend-production.up.railway.app';
 const BACKUP_URL = 'https://images.pexels.com/photos/2422265/pexels-photo-2422265.jpeg?auto=compress&cs=tinysrgb&w=800';
 
 const StoryCard = memo(({ item, navigation }) => {
@@ -30,6 +32,12 @@ const StoryCard = memo(({ item, navigation }) => {
 
   const handlePress = () => {
     navigation.navigate('Detail', { locationData: item });
+  };
+
+  // Helper para limpiar el HTML del autor si viene sucio (por seguridad extra)
+  const cleanAuthor = (text) => {
+      if (!text) return 'Wiki Commons';
+      return text.replace(/<[^>]*>?/gm, '').trim();
   };
 
   return (
@@ -57,19 +65,29 @@ const StoryCard = memo(({ item, navigation }) => {
             />
         )}
         
-        {/* C. Gradiente Oscuro (Overlay) para que el texto resalte si decides poner algo encima */}
+        {/* C. Gradiente Oscuro (Overlay) */}
         <View style={styles.imageOverlay} />
 
-        {/* D. Badge de Categoría (Estilo Etiqueta Premium) */}
+        {/* D. Badge de Categoría (Top-Left) */}
         <View style={styles.badge}>
           <MaterialCommunityIcons name="bookmark" size={12} color={THEME.gold} style={{marginRight: 4}} />
           <Text style={styles.badgeText}>
             {item.category ? item.category.toUpperCase() : 'HISTORIC'}
           </Text>
         </View>
+
+        {/* E. 🆕 BADGE DE CRÉDITOS / AUTOR (Bottom-Right) */}
+        {/* Solo mostramos si hay imagen real cargada o URL válida */}
+        {finalUrl && (
+            <View style={styles.creditBadge}>
+                <Text style={styles.creditText} numberOfLines={1}>
+                    📸 {cleanAuthor(item.author)} • {item.license || 'CC BY'}
+                </Text>
+            </View>
+        )}
       </View>
 
-      {/* 2. SECCIÓN DE INFORMACIÓN (Dark Theme) */}
+      {/* 2. SECCIÓN DE INFORMACIÓN */}
       <View style={styles.infoContainer}>
         
         {/* Título Serif Elegante */}
@@ -93,7 +111,7 @@ const StoryCard = memo(({ item, navigation }) => {
             : 'Un lugar histórico fascinante esperando ser descubierto.'}
         </Text>
 
-        {/* Botón "Leer más" (Decorativo) */}
+        {/* Botón "Leer más" */}
         <View style={styles.footerRow}>
             <Text style={styles.readMoreText}>EXPLORE</Text>
             <Ionicons name="arrow-forward" size={14} color={THEME.gold} />
@@ -104,22 +122,21 @@ const StoryCard = memo(({ item, navigation }) => {
   );
 });
 
-// --- 🎨 ESTILOS INTEGRADOS (BLACK & GOLD) ---
+// --- 🎨 ESTILOS INTEGRADOS ---
 const styles = StyleSheet.create({
   cardContainer: {
     backgroundColor: THEME.cardBg,
     borderRadius: 16,
     marginBottom: 20,
     marginHorizontal: 15,
-    // Bordes y Sombras Premium
     borderWidth: 1,
     borderColor: THEME.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.5,
     shadowRadius: 6,
-    elevation: 8, // Sombra Android
-    overflow: 'hidden', // Para que la imagen respete el borde redondeado
+    elevation: 8,
+    overflow: 'hidden',
   },
   
   // Imagen
@@ -127,7 +144,7 @@ const styles = StyleSheet.create({
     height: 180,
     width: '100%',
     backgroundColor: '#000',
-    position: 'relative',
+    position: 'relative', // Importante para el absolute del badge
   },
   cardImagePlaceholder: {
     ...StyleSheet.absoluteFillObject,
@@ -140,28 +157,47 @@ const styles = StyleSheet.create({
   },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.2)', // Oscurece un poco la imagen para elegancia
+    backgroundColor: 'rgba(0,0,0,0.2)',
   },
 
-  // Badge (Etiqueta negra con borde dorado)
+  // Badge Categoría (Arriba Izquierda)
   badge: {
     position: 'absolute',
     top: 12,
     left: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.85)', // Negro casi sólido
+    backgroundColor: 'rgba(0,0,0,0.85)',
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: THEME.gold, // Borde Dorado
+    borderColor: THEME.gold,
   },
   badgeText: {
     color: THEME.gold,
     fontSize: 10,
     fontWeight: 'bold',
     letterSpacing: 1,
+  },
+
+  // 🆕 Badge Créditos (Abajo Derecha)
+  creditBadge: {
+    position: 'absolute',
+    bottom: 8,
+    right: 8,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)', // Fondo oscuro semitransparente
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    maxWidth: '65%', // Evita que tape toda la foto si el nombre es muy largo
+    borderWidth: 0.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  creditText: {
+    color: '#E0E0E0', // Blanco hueso suave
+    fontSize: 9,      // Letra pequeña legal
+    fontWeight: '600',
   },
 
   // Info
@@ -173,7 +209,7 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: THEME.text,
-    fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif', // Fuente Serif "Histórica"
+    fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif',
     marginBottom: 6,
     letterSpacing: 0.5,
   },
@@ -196,12 +232,12 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 13,
-    color: '#888', // Un gris un poco más oscuro para que no compita con el título
+    color: '#888',
     lineHeight: 18,
     marginBottom: 12,
   },
   
-  // Footer "Explore"
+  // Footer
   footerRow: {
     flexDirection: 'row',
     alignItems: 'center',

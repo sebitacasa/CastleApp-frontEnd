@@ -31,7 +31,9 @@ const THEME = {
   overlay: 'rgba(0,0,0,0.6)', // Oscurecer imágenes
 };
 
-const API_BASE = 'http://10.0.2.2:8080';
+//const API_BASE = 'http://10.0.2.2:8080';
+// Debe ser https (seguro) y terminar en up.railway.app
+const API_BASE = 'https://castleapp-backend-production.up.railway.app';
 const { width, height } = Dimensions.get('window');
 const IMG_HEIGHT = height * 0.45; // Imagen grande e inmersiva
 const MAX_LENGTH = 150; 
