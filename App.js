@@ -1,12 +1,14 @@
 import 'react-native-gesture-handler';
 import React, { useContext } from 'react';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
-import * as Linking from 'expo-linking'; // <--- 1. IMPORTANTE: Agrega esto
+import * as Linking from 'expo-linking';
 
 import { AuthProvider, AuthContext } from './src/context/AuthContext';
 import { FavoritesProvider } from './src/context/FavoritesContext';
+
+// Importación de pantallas
 import FeedScreen from './src/screens/FeedScreen';
 import DetailScreen from './src/screens/DetailScreen'; 
 import MapScreen from './src/screens/MapScreen';
@@ -17,50 +19,74 @@ import HistoryMapScreen from './src/screens/HistoryMapScreen';
 
 const Stack = createStackNavigator();
 
-// --- 2. CONFIGURACIÓN DE DEEP LINKING ---
-// Esto le dice a la navegación: "¡Escucha los enlaces que empiecen con castleapp-dev://!"
+// --- CONFIGURACIÓN DE DEEP LINKING ---
 const linking = {
   prefixes: [Linking.createURL('/'), 'castleapp-dev://'],
   config: {
     screens: {
+      Feed: 'feed',
       Login: 'login',
       Register: 'register',
-      Feed: 'feed',
+      Favorites: 'favorites',
     },
   },
 };
 
+// Tema visual para las cabeceras de navegación (coincide con tu THEME)
+const screenOptions = {
+    headerStyle: { backgroundColor: '#121212' },
+    headerTintColor: '#D4AF37', // Dorado
+    headerTitleStyle: { fontWeight: 'bold' },
+    headerBackTitleVisible: false, // Ocultar texto "Back" en iOS
+};
+
 const AppNavigation = () => {
-  const { isLoading, userToken } = useContext(AuthContext);
+  const { isLoading } = useContext(AuthContext);
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' }}>
-        <ActivityIndicator size="large" color="#203040" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#121212' }}>
+        <ActivityIndicator size="large" color="#D4AF37" />
       </View>
     );
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {userToken == null ? (
-        <>
-          <Stack.Screen name="Login" component={LoginScreen} />
-          <Stack.Screen name="Register" component={RegisterScreen} />
-        </>
-      ) : (
-        <>
-          <Stack.Screen name="Feed" component={FeedScreen} />
-          <Stack.Screen name="Detail" component={DetailScreen} />
-          <Stack.Screen name="MapScreen" component={MapScreen} />
-        </>
-      )}
+    // 🚀 CAMBIO CRÍTICO: Eliminamos la condición (userToken ? ... : ...)
+    // Ahora todas las pantallas están disponibles, pero la inicial es siempre FEED.
+    <Stack.Navigator 
+        initialRouteName="Feed" 
+        screenOptions={{ headerShown: false }}
+    >
+      {/* --- PANTALLAS PÚBLICAS (Todos acceden) --- */}
+      <Stack.Screen name="Feed" component={FeedScreen} />
+      <Stack.Screen name="Detail" component={DetailScreen} />
+      <Stack.Screen name="MapScreen" component={MapScreen} />
+
+      {/* --- PANTALLAS DE AUTH (Se acceden bajo demanda) --- */}
+      <Stack.Screen name="LoginScreen" component={LoginScreen} />
+      <Stack.Screen name="Register" component={RegisterScreen} />
+
+      {/* --- PANTALLAS PROTEGIDAS (El botón en Feed las protege) --- */}
       <Stack.Screen 
-                name="Favorites" 
-                component={FavoritesScreen} 
-                options={{ title: 'My Favorites', headerShown: true }} // Opcional: headerShown true para tener flecha de volver por defecto
-            />
-            <Stack.Screen name="HistoryMap" component={HistoryMapScreen} />
+        name="Favorites" 
+        component={FavoritesScreen} 
+        options={{ 
+            ...screenOptions, // Hereda estilos oscuros
+            headerShown: true, 
+            title: 'My Favorites' 
+        }} 
+      />
+      
+      <Stack.Screen 
+        name="HistoryMap" 
+        component={HistoryMapScreen} 
+        options={{ 
+            ...screenOptions,
+            headerShown: true,
+            title: 'My Conquests'
+        }} 
+      />
     </Stack.Navigator>
   );
 };
@@ -69,12 +95,11 @@ export default function App() {
   return (
     <AuthProvider>
       <FavoritesProvider>
-      <NavigationContainer linking={linking}>
-        <AppNavigation />
-      </NavigationContainer>
-
+        <NavigationContainer linking={linking}>
+          <StatusBar barStyle="light-content" backgroundColor="#121212" />
+          <AppNavigation />
+        </NavigationContainer>
       </FavoritesProvider>
-      {/* 3. AGREGAMOS LA PROP LINKING AQUÍ 👇 */}
     </AuthProvider>
   );
 }

@@ -21,7 +21,7 @@ export default {
     },
     "android": {
       "package": "com.sebit.castleapp",
-      "versionCode": 1, // ⚠️ CRÍTICO: Necesario para subir a Google Play. Súbelo a 2, 3... en futuras actualizaciones.
+      "versionCode": 11, 
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"

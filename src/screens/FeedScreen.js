@@ -7,7 +7,7 @@ import {
 
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import * as Location from 'expo-location'; // 👈 Importación del GPS
+import * as Location from 'expo-location'; 
 
 import { AuthContext } from '../context/AuthContext';
 import StoryCard from '../components/StoryCard';
@@ -43,6 +43,7 @@ export default function FeedScreen() {
   const navigation = useNavigation();
   const { userInfo, logout } = useContext(AuthContext);
 
+  // Extracción segura de datos del usuario
   const userPhoto = 
       userInfo?.avatar_url || userInfo?.photo || userInfo?.picture || 
       userInfo?.user?.avatar_url || userInfo?.user?.photo || userInfo?.user?.picture || null;
@@ -125,12 +126,11 @@ export default function FeedScreen() {
         });
       } else {
         console.log("⚠️ No se pudo obtener GPS real. Usando Fallback (San Telmo).");
-        // Fallback de seguridad para que la app no se quede en blanco
         setActiveLocation({
           lat: -34.6212,
           lon: -58.3731,
           label: "San Telmo (Default)",
-          isManual: false // Lo marcamos como no-manual para que sepa que es automático
+          isManual: false 
         });
       }
     })();
@@ -171,7 +171,6 @@ export default function FeedScreen() {
             timestamp: Date.now() 
         });
       } else {
-        // Si falla al resetear, mantenemos el fallback
         setActiveLocation({
             lat: -34.6212,
             lon: -58.3731,
@@ -286,7 +285,8 @@ export default function FeedScreen() {
                         </TouchableOpacity>
 
                         <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
-                            {userPhoto ? (
+                            {/* Si es invitado, mostramos icono genérico. Si es user, su foto */}
+                            {userInfo && userPhoto ? (
                                 <Image source={{ uri: userPhoto }} style={localStyles.avatarSmall} />
                             ) : (
                                 <Ionicons name="menu" size={30} color={THEME.gold} />
@@ -335,35 +335,63 @@ export default function FeedScreen() {
           {menuVisible && (
               <View style={localStyles.dropdownMenu}>
                   <View style={localStyles.arrowUp} />
+                  
+                  {/* CABECERA DEL MENÚ */}
                   <View style={localStyles.menuHeader}>
-                      {userPhoto ? (
+                      {userInfo && userPhoto ? (
                           <Image source={{ uri: userPhoto }} style={localStyles.avatarLarge} />
                       ) : (
                           <View style={localStyles.avatarPlaceholder}>
                               <Ionicons name="person" size={28} color={THEME.bg} />
                           </View>
                       )}
-                      <Text style={localStyles.menuUserLabel}>Explorer</Text>
-                      <Text style={localStyles.menuUserName} numberOfLines={1}>{userName}</Text>
+                      
+                      {/* Texto condicional: Invitado vs Usuario */}
+                      <Text style={localStyles.menuUserLabel}>{userInfo ? 'Explorer Rank' : 'Guest Mode'}</Text>
+                      <Text style={localStyles.menuUserName} numberOfLines={1}>
+                          {userInfo ? userName : 'Guest User'}
+                      </Text>
                   </View>
+
                   <View style={localStyles.separator} />
-                  <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('Favorites'); }}>
-                      <Ionicons name="heart" size={20} color={THEME.gold} />
-                      <Text style={localStyles.menuItemText}>My Favorites</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('HistoryMap'); }}>
-                      <MaterialCommunityIcons name="sword-cross" size={20} color={THEME.gold} />
-                      <Text style={localStyles.menuItemText}>My Conquests</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={localStyles.menuItem} onPress={() => alert("Coming Soon")}>
-                      <Ionicons name="add-circle" size={20} color={THEME.subText} />
-                      <Text style={[localStyles.menuItemText, {color: THEME.subText}]}>Add Place</Text>
-                  </TouchableOpacity>
-                  <View style={localStyles.separator} />
-                  <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); logout(); }}>
-                      <Ionicons name="log-out" size={20} color={THEME.danger} />
-                      <Text style={[localStyles.menuItemText, { color: THEME.danger }]}>Sign Out</Text>
-                  </TouchableOpacity>
+                  
+                  {/* OPCIONES DEL MENÚ */}
+                  {userInfo ? (
+                    // --- Opciones para USUARIOS LOGUEADOS ---
+                    <>
+                        <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('Favorites'); }}>
+                            <Ionicons name="heart" size={20} color={THEME.gold} />
+                            <Text style={localStyles.menuItemText}>My Favorites</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('HistoryMap'); }}>
+                            <MaterialCommunityIcons name="sword-cross" size={20} color={THEME.gold} />
+                            <Text style={localStyles.menuItemText}>My Conquests</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={localStyles.menuItem} onPress={() => alert("Coming Soon")}>
+                            <Ionicons name="add-circle" size={20} color={THEME.subText} />
+                            <Text style={[localStyles.menuItemText, {color: THEME.subText}]}>Add Place</Text>
+                        </TouchableOpacity>
+                        <View style={localStyles.separator} />
+                        <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); logout(); }}>
+                            <Ionicons name="log-out" size={20} color={THEME.danger} />
+                            <Text style={[localStyles.menuItemText, { color: THEME.danger }]}>Sign Out</Text>
+                        </TouchableOpacity>
+                    </>
+                  ) : (
+                    // --- Opciones para INVITADOS (GUEST) ---
+                    <TouchableOpacity 
+                        style={localStyles.menuItem} 
+                        onPress={() => { 
+                            setMenuVisible(false); 
+                            navigation.navigate('LoginScreen'); 
+                        }}
+                    >
+                        <Ionicons name="log-in" size={20} color={THEME.gold} />
+                        <Text style={[localStyles.menuItemText, { color: THEME.gold, fontWeight: 'bold' }]}>
+                            Sign In / Register
+                        </Text>
+                    </TouchableOpacity>
+                  )}
               </View>
           )}
       </Animated.View>

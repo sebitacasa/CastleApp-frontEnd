@@ -1,6 +1,10 @@
-import React, { useState, useMemo, memo } from 'react';
+import React, { useState, useMemo, memo, useContext } from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+
+// Importamos los contextos para la lógica de usuario y favoritos
+import { AuthContext } from '../context/AuthContext';
+import { FavoritesContext } from '../context/FavoritesContext';
 
 // --- 🎨 PALETA DE COLORES "SCRATCH MAP" ---
 const THEME = {
@@ -10,18 +14,23 @@ const THEME = {
   text: '#F0F0F0',         // Blanco hueso
   subText: '#A0A0A0',      // Gris plata
   border: '#333333',       // Borde sutil
+  danger: '#CF6679',       // Para errores o acciones destructivas
 };
 
-// Configuración API
-//const API_BASE = 'http://10.0.2.2:8080';
-// Debe ser https (seguro) y terminar en up.railway.app
 const API_BASE = 'https://castleapp-backend-production.up.railway.app';
 const BACKUP_URL = 'https://images.pexels.com/photos/2422265/pexels-photo-2422265.jpeg?auto=compress&cs=tinysrgb&w=800';
 
 const StoryCard = memo(({ item, navigation }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
-  // --- LÓGICA DE URL ---
+  // --- 1. HOOKS DE CONTEXTO ---
+  const { userInfo } = useContext(AuthContext); // Para saber si es Guest o Usuario registrado
+  const { toggleFavorite, isFavorite } = useContext(FavoritesContext); // Para manejar la DB local de favs
+
+  // Verificamos si este item ya es favorito
+  const isFav = isFavorite(item.id);
+
+  // --- 2. LÓGICA DE URL DE IMAGEN ---
   const finalUrl = useMemo(() => {
     let rawUrl = item.images?.[0] || item.image_url;
     if (!rawUrl) return null; 
@@ -34,7 +43,20 @@ const StoryCard = memo(({ item, navigation }) => {
     navigation.navigate('Detail', { locationData: item });
   };
 
-  // Helper para limpiar el HTML del autor si viene sucio (por seguridad extra)
+  // --- 3. LÓGICA DEL GUARDIA DE FAVORITOS 🛡️ ---
+  const handleFavoritePress = () => {
+    // A. Si NO hay usuario (es invitado), mandarlo al Login
+    if (!userInfo || (typeof userInfo === 'object' && Object.keys(userInfo).length === 0)) {
+        // Opcional: Podrías pasar el item como params si quisieras redirigir directo al volver
+        navigation.navigate('LoginScreen'); 
+        return; 
+    }
+
+    // B. Si SÍ hay usuario, ejecutar la acción de favorito
+    toggleFavorite(item);
+  };
+
+  // Helper para limpiar el HTML del autor
   const cleanAuthor = (text) => {
       if (!text) return 'Wiki Commons';
       return text.replace(/<[^>]*>?/gm, '').trim();
@@ -76,8 +98,20 @@ const StoryCard = memo(({ item, navigation }) => {
           </Text>
         </View>
 
-        {/* E. 🆕 BADGE DE CRÉDITOS / AUTOR (Bottom-Right) */}
-        {/* Solo mostramos si hay imagen real cargada o URL válida */}
+        {/* E. 🆕 BOTÓN DE FAVORITOS (Top-Right) */}
+        <TouchableOpacity 
+            style={styles.favoriteBtn} 
+            onPress={handleFavoritePress}
+            activeOpacity={0.7}
+        >
+            <Ionicons 
+                name={isFav ? "heart" : "heart-outline"} 
+                size={22} 
+                color={isFav ? THEME.gold : "#FFF"} 
+            />
+        </TouchableOpacity>
+
+        {/* F. Badge de Créditos / Autor (Bottom-Right) */}
         {finalUrl && (
             <View style={styles.creditBadge}>
                 <Text style={styles.creditText} numberOfLines={1}>
@@ -144,7 +178,7 @@ const styles = StyleSheet.create({
     height: 180,
     width: '100%',
     backgroundColor: '#000',
-    position: 'relative', // Importante para el absolute del badge
+    position: 'relative', 
   },
   cardImagePlaceholder: {
     ...StyleSheet.absoluteFillObject,
@@ -181,22 +215,37 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // 🆕 Badge Créditos (Abajo Derecha)
+  // 🆕 Botón Favorito (Arriba Derecha)
+  favoriteBtn: {
+      position: 'absolute',
+      top: 10,
+      right: 10,
+      backgroundColor: 'rgba(0,0,0,0.6)', // Círculo oscuro semitransparente
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.1)'
+  },
+
+  // Badge Créditos (Abajo Derecha)
   creditBadge: {
     position: 'absolute',
     bottom: 8,
     right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)', // Fondo oscuro semitransparente
+    backgroundColor: 'rgba(0, 0, 0, 0.7)', 
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 6,
-    maxWidth: '65%', // Evita que tape toda la foto si el nombre es muy largo
+    maxWidth: '65%', 
     borderWidth: 0.5,
     borderColor: 'rgba(255,255,255,0.2)',
   },
   creditText: {
-    color: '#E0E0E0', // Blanco hueso suave
-    fontSize: 9,      // Letra pequeña legal
+    color: '#E0E0E0', 
+    fontSize: 9,      
     fontWeight: '600',
   },
 

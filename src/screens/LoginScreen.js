@@ -5,13 +5,12 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { AuthContext } from '../context/AuthContext';
 
 const LoginScreen = ({ navigation }) => {
-  const { loginWithGoogle, isLoading } = useContext(AuthContext);
+  const { loginWithGoogle } = useContext(AuthContext);
   const [isGoogleLoading, setGoogleLoading] = useState(false);
 
-  // 1. Configuración Inicial (Solo se ejecuta una vez)
+  // 1. Configuración Inicial
   useEffect(() => {
     GoogleSignin.configure({
-      // ¡Aquí usamos tu ID Web! Google lo usa para validar el token internamente.
       webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, 
       offlineAccess: true,
       forceCodeForRefreshToken: true,
@@ -19,45 +18,45 @@ const LoginScreen = ({ navigation }) => {
   }, []);
 
   // 2. La Función de Login
-// En LoginScreen.js (Reemplaza la función signIn completa)
-
   const signIn = async () => {
     setGoogleLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
       
-      console.log("📦 TIPO DE RESPUESTA:", typeof response);
-      
-      // 1. APLICAR INTELIGENCIA DE FORMATO
-      // A veces la respuesta llega anidada en 'data'
+      // Inteligencia de formato
       let userInfo = response.data || response;
-      
-      // Si por alguna razón extraña llega como texto, lo convertimos
       if (typeof userInfo === 'string') {
           try { userInfo = JSON.parse(userInfo); } catch(e) {}
       }
 
-      console.log("🔍 Buscando token en:", Object.keys(userInfo));
-
-      // 2. ESTRATEGIA DE RESCATE MULTI-NIVEL 
-      // Buscamos el token en todas las ubicaciones posibles
+      // Estrategia de rescate de token
       const token = userInfo.idToken || userInfo.user?.idToken || userInfo.serverAuthCode;
       const user = userInfo.user || userInfo;
 
       if (token) {
-        console.log("✅ ¡TOKEN ENCONTRADO! Longitud:", token.length);
-        // ¡Aquí está la magia!
-        loginWithGoogle(token, user);
+        console.log("✅ ¡LOGIN EXITOSO!");
+        
+        // A. Ejecutar login en el contexto (guardar token, estado global, etc.)
+        // Usamos await para asegurarnos de que se guarde antes de navegar
+        await loginWithGoogle(token, user);
+
+        // B. NAVEGACIÓN INTELIGENTE 🧠 (La clave del Guest Mode)
+        // En lugar de ir siempre al Home, preguntamos si hay una pantalla anterior.
+        if (navigation.canGoBack()) {
+            navigation.goBack(); // Vuelve al castillo o al Feed donde estabas
+        } else {
+            navigation.navigate('FeedScreen'); // Fallback por si acaso
+        }
+
       } else {
-        console.log("⚠️ El objeto no tenía token visible:", userInfo);
         Alert.alert("Error", "Google conectó pero no entregó el pase (Token).");
       }
       
     } catch (error) {
       console.log("❌ Error:", error);
       if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        // Nada, el usuario cerró
+        // Usuario canceló
       } else {
         Alert.alert("Error Login", error.message);
       }
@@ -68,7 +67,7 @@ const LoginScreen = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Login Nativo Real 🛡️</Text>
+      <Text style={styles.title}>Welcome Explorer 🏰</Text>
       
       <TouchableOpacity
         style={styles.googleButton}
@@ -80,9 +79,19 @@ const LoginScreen = ({ navigation }) => {
         ) : (
           <>
             <MaterialCommunityIcons name="google" size={24} color="#DB4437" />
-            <Text style={styles.text}>  Entrar con Google</Text>
+            <Text style={styles.text}>  Sign in with Google</Text>
           </>
         )}
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={{ marginTop: 20 }} 
+        onPress={() => {
+            if (navigation.canGoBack()) navigation.goBack();
+            else navigation.navigate('FeedScreen');
+        }}
+      >
+        <Text style={{ color: '#888' }}>Continue as Guest</Text>
       </TouchableOpacity>
     </View>
   );
@@ -90,7 +99,7 @@ const LoginScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
-  title: { fontSize: 24, marginBottom: 30, fontWeight: 'bold' },
+  title: { fontSize: 24, marginBottom: 30, fontWeight: 'bold', color: '#333' },
   googleButton: { 
     flexDirection: 'row', backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd',
     paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, alignItems: 'center', elevation: 2

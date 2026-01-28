@@ -3,69 +3,74 @@ import {
   View, TextInput, FlatList, Text, TouchableOpacity, 
   StyleSheet, ActivityIndicator, Keyboard 
 } from 'react-native';
+import { TOP_CITIES } from '../data/topCities'; // <--- IMPORTA TU DATA LOCAL
 
 const CitySearch = ({ onLocationSelect }) => {
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showList, setShowList] = useState(false);
-  
-  // NUEVO ESTADO: Controla si debemos buscar o no
-  const [shouldSearch, setShouldSearch] = useState(true); // <--- CAMBIO IMPORTANTE
+  const [shouldSearch, setShouldSearch] = useState(true);
 
- // Lista de países permitidos
-  // Lista de países permitidos (Códigos ISO de 2 letras en MAYÚSCULAS)
+  // Lista de países permitidos
   const WESTERN_COUNTRIES = [
-      // Europa Central y Norte
-      'DE', 'AT', 'CH', 'NL', 'BE', 'LU', 'LI', // Alemania, Austria, Suiza, etc.
-      // Europa Sur/Oeste
-      'ES', 'FR', 'IT', 'PT', 'GB', 'IE', 'AD', 'MC', 'MT', 'SM', 'VA', 
-    'GR', 'CY', // Grecia, Chipre
-
-    // Europa Central y Norte (DACH, Benelux, Escandinavia)
-    'DE', 'AT', 'CH', 'LI', // Alemania, Austria, Suiza, Liechtenstein
-    'NL', 'BE', 'LU',       // Países Bajos, Bélgica, Luxemburgo
-    'DK', 'SE', 'NO', 'FI', 'IS', // Dinamarca, Suecia, Noruega, Finlandia, Islandia
-
-    // Europa del Este y Bálticos
-    'PL', 'CZ', 'SK', 'HU', // Polonia, Chequia, Eslovaquia, Hungría
-    'EE', 'LV', 'LT',       // Estonia, Letonia, Lituania
-    'RO', 'BG', 'MD',       // Rumania, Bulgaria, Moldavia
-    'UA', 'BY', 'RU',       // Ucrania, Bielorrusia, Rusia
-
-    // Balcanes
-    'AL', 'HR', 'BA', 'RS', 'ME', 'MK', 'SI', 'XK' /
-      // Escandinavia
-      'DK', 'SE', 'NO', 'FI', 'IS',
-      // Europa Este (Opcional, según tu alcance)
-      'PL', 'CZ', 'HU', 'SK', 'SI', 'HR', 'GR',
-      // Américas
-      'US', 'CA', 'MX', 
-      'AR', 'BR', 'CL', 'CO', 'PE', 'UY', 'EC', 'BO', 'PY', 'VE', 'CR', 'PA'
-      
+    'DE', 'AT', 'CH', 'NL', 'BE', 'LU', 'LI', 
+    'ES', 'FR', 'IT', 'PT', 'GB', 'IE', 'AD', 'MC', 'MT', 'SM', 'VA', 
+    'GR', 'CY', 'DK', 'SE', 'NO', 'FI', 'IS', 
+    'PL', 'CZ', 'SK', 'HU', 'EE', 'LV', 'LT', 
+    'RO', 'BG', 'MD', 'UA', 'BY', 'RU', 
+    'AL', 'HR', 'BA', 'RS', 'ME', 'MK', 'SI', 'XK',
+    'US', 'CA', 'MX', 'AR', 'BR', 'CL', 'CO', 'PE', 'UY', 'EC', 'BO', 'PY', 'VE', 'CR', 'PA'
   ];
 
   useEffect(() => {
-    // Si la bandera dice que NO busquemos (porque acabamos de seleccionar), no hacemos nada.
-    if (!shouldSearch) return; // <--- CAMBIO: Bloqueo de búsqueda indeseada
+    if (!shouldSearch) return;
 
+    // LÓGICA HÍBRIDA:
+    // 1. Si el texto es corto (2-3 letras), buscar SOLO localmente (Es instantáneo).
+    // 2. Si el texto es largo o no hay resultados locales, llamar a la API.
+
+    if (query.length > 1) {
+       // A. Búsqueda Local (Instantánea)
+       const localResults = TOP_CITIES.filter(city => 
+           city.name.toLowerCase().startsWith(query.toLowerCase())
+       ).map(city => ({
+           properties: {
+               name: city.name,
+               country: city.country,
+               countrycode: city.countryCode,
+               source: 'local' // Marca para identificar
+           },
+           geometry: { coordinates: [city.lon, city.lat] }
+       }));
+
+       if (localResults.length > 0) {
+           setSuggestions(localResults);
+           setShowList(true);
+           // Si encontramos coincidencias exactas locales, quizás no necesitemos llamar a la API inmediatamente
+       }
+    }
+
+    // B. Búsqueda API (Con Debounce) para lugares no populares
     const delayDebounceFn = setTimeout(() => {
       if (query.length > 2) {
+        // Solo llamamos a la API si queremos refinar o si no encontramos suficientes locales
         fetchPlaces(query);
-      } else {
+      } else if (query.length === 0) {
         setSuggestions([]); 
         setShowList(false);
       }
-    }, 500);
+    }, 400); // Reduje un poco el tiempo a 400ms
 
     return () => clearTimeout(delayDebounceFn);
-  }, [query, shouldSearch]); // <--- Agregamos shouldSearch a las dependencias
+  }, [query, shouldSearch]);
 
-  // --- INTENTO 1: PHOTON ---
+  // --- PHOTON (INGLÉS) ---
   const fetchPlaces = async (text) => {
     setLoading(true);
     try {
-      const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&lang=es&limit=10`;
+      // CAMBIO: lang=en para inglés
+      const url = `https://photon.komoot.io/api/?q=${encodeURIComponent(text)}&lang=en&limit=10`;
       const response = await fetch(url, { headers: { 'User-Agent': 'CastleApp/1.0' } });
 
       if (!response.ok) throw new Error("Fallo Photon");
@@ -73,32 +78,38 @@ const CitySearch = ({ onLocationSelect }) => {
       const json = await response.json();
       const features = json.features || [];
       
-     const filtered = features.filter(item => {
-        // Normalizamos a mayúsculas para evitar errores
+      const apiFiltered = features.filter(item => {
         const code = item?.properties?.countrycode?.toUpperCase();
-        
-        // LOG PARA DEPURAR (Míralo en la terminal)
-        // console.log(`Ciudad: ${item.properties.name} | País: ${code} | ¿Pasa?: ${WESTERN_COUNTRIES.includes(code)}`);
-        
         return code && WESTERN_COUNTRIES.includes(code);
       });
-      if (filtered.length > 0) {
-          setSuggestions(filtered);
-          setShowList(true);
-          setLoading(false);
-      } else {
-          throw new Error("Sin resultados");
-      }
 
+      // MEZCLA INTELIGENTE:
+      // Si ya teníamos resultados locales, intentamos no duplicarlos.
+      // O simplemente reemplazamos con los de la API que suelen ser más completos si es una búsqueda específica.
+      if (apiFiltered.length > 0) {
+          setSuggestions(prev => {
+              // Opción: Combinar locales y API (evitando duplicados por nombre)
+              const existingNames = new Set(prev.filter(p => p.properties.source === 'local').map(p => p.properties.name));
+              const newFromApi = apiFiltered.filter(item => !existingNames.has(item.properties.name));
+              
+              // Prioridad: Locales primero (son instantáneos), luego API
+              // Pero si el usuario escribió mucho, la API es más precisa.
+              return [...prev.filter(p => p.properties.source === 'local'), ...newFromApi];
+          });
+          setShowList(true);
+      } 
     } catch (error) {
       fetchNominatimFallback(text);
+    } finally {
+        setLoading(false);
     }
   };
 
-  // --- INTENTO 2: NOMINATIM ---
+  // --- NOMINATIM (INGLÉS) ---
   const fetchNominatimFallback = async (text) => {
     try {
-        const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&addressdetails=1&limit=5&accept-language=es`;
+        // CAMBIO: accept-language=en
+        const nominatimUrl = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(text)}&format=json&addressdetails=1&limit=5&accept-language=en`;
         const res = await fetch(nominatimUrl, { headers: { 'User-Agent': 'CastleApp/1.0' } });
 
         if (!res.ok) throw new Error("Fallo Nominatim");
@@ -108,44 +119,45 @@ const CitySearch = ({ onLocationSelect }) => {
         const adaptedSuggestions = data.map(item => ({
             properties: {
                 name: item.name || item.display_name.split(',')[0],
-                city: item.address?.city || item.address?.town || item.address?.state,
+                // Nominatim a veces devuelve 'state' o 'town' si no es ciudad grande
                 country: item.address?.country,
                 countrycode: item.address?.country_code?.toUpperCase()
             },
             geometry: { coordinates: [parseFloat(item.lon), parseFloat(item.lat)] }
         })).filter(item => item.properties.countrycode && WESTERN_COUNTRIES.includes(item.properties.countrycode));
 
-        setSuggestions(adaptedSuggestions);
-        setShowList(adaptedSuggestions.length > 0);
+        if (adaptedSuggestions.length > 0) {
+            setSuggestions(adaptedSuggestions);
+            setShowList(true);
+        }
 
     } catch (e) {
-        setSuggestions([]);
+       // Silencioso
     } finally {
         setLoading(false);
     }
   };
 
- const handleSelect = (item) => {
+  const handleSelect = (item) => {
     Keyboard.dismiss();
     setShouldSearch(false); 
 
-    const cityName = item?.properties?.name || "Ubicación";
+    const cityName = item?.properties?.name || "Location";
     const countryName = item?.properties?.country || "";
-    const fullName = `${cityName}, ${countryName}`; // <--- Creamos el nombre completo
+    // Aseguramos formato limpio
+    const fullName = countryName ? `${cityName}, ${countryName}` : cityName;
     
     setQuery(fullName);
     setSuggestions([]);
     setShowList(false);
 
     if (onLocationSelect && item?.geometry?.coordinates) {
-      // CAMBIO: Enviamos coordenadas Y el nombre
       onLocationSelect(item.geometry.coordinates, fullName); 
     }
   };
 
   const handleTextChange = (text) => {
-      // Si el usuario escribe, reactivamos la búsqueda
-      setShouldSearch(true); // <--- CAMBIO: Volvemos a permitir buscar
+      setShouldSearch(true);
       setQuery(text);
       if (text.length === 0) setShowList(false);
   };
@@ -155,9 +167,9 @@ const CitySearch = ({ onLocationSelect }) => {
       <View style={styles.inputContainer}>
         <TextInput
           style={styles.input}
-          placeholder="Search City..."
+          placeholder="Search City (e.g. Vienna, London)..." // Placeholder en inglés
           value={query}
-          onChangeText={handleTextChange} // <--- Usamos la nueva función
+          onChangeText={handleTextChange}
           placeholderTextColor="#666"
         />
         {loading && <ActivityIndicator style={{marginLeft: 10}} size="small" color="#38761D" />}
@@ -167,12 +179,16 @@ const CitySearch = ({ onLocationSelect }) => {
         <View style={styles.listContainer}>
           <FlatList
             data={suggestions}
-            keyExtractor={(item, index) => index.toString()}
+            keyExtractor={(item, index) => `${item.properties.name}-${index}`}
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => (
               <TouchableOpacity style={styles.item} onPress={() => handleSelect(item)}>
-                <Text style={styles.cityText}>{item?.properties?.name}</Text>
-                <Text style={styles.countryText}>{item?.properties?.country}</Text>
+                <View>
+                    <Text style={styles.cityText}>{item?.properties?.name}</Text>
+                    <Text style={styles.countryText}>{item?.properties?.country}</Text>
+                </View>
+                {/* Indicador visual opcional si es resultado local */}
+                {/* {item.properties.source === 'local' && <Text style={{fontSize:10, color:'green'}}>⚡</Text>} */}
               </TouchableOpacity>
             )}
           />
@@ -181,6 +197,8 @@ const CitySearch = ({ onLocationSelect }) => {
     </View>
   );
 };
+
+// ... (Tus estilos se mantienen igual)
 const styles = StyleSheet.create({
   container: { width: '100%', position: 'relative', zIndex: 9999 },
   inputContainer: {
@@ -194,7 +212,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', borderRadius: 15, maxHeight: 220,
     elevation: 10, zIndex: 9999, overflow: 'hidden'
   },
-  item: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
+  item: { padding: 15, borderBottomWidth: 1, borderBottomColor: '#f0f0f0', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cityText: { fontSize: 16, fontWeight: 'bold', color: '#000' },
   countryText: { fontSize: 14, color: '#666' }
 });
