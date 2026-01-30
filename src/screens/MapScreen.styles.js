@@ -3,8 +3,8 @@ import { StyleSheet, Platform } from 'react-native';
 // 🎨 DEFINICIÓN DEL TEMA (Exportamos también los colores por si se necesitan en la lógica)
 export const THEME = {
     darkBg: '#1a2230',      // Fondo oscuro principal
-    cardBg: '#242f40',      // Fondo de tarjeta
-    accent: '#38761D',      // Verde principal
+    cardBg: '#000000',      // Fondo de tarjeta
+    accent: '#D4AF37',      // Verde principal
     textWhite: '#FFFFFF',   // Texto blanco
     textGray: '#B0B0B0',    // Texto gris secundario
 };

@@ -1,14 +1,35 @@
 import React, { useContext, useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { 
+  View, 
+  Text, 
+  TouchableOpacity, 
+  StyleSheet, 
+  ActivityIndicator, 
+  Alert, 
+  ImageBackground, 
+  StatusBar,
+  Platform
+} from 'react-native';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { AuthContext } from '../context/AuthContext';
+
+// --- 🎨 USAMOS TU PALETA DE COLORES ---
+const THEME = {
+  bg: '#121212',
+  card: '#1E1E1E',
+  gold: '#D4AF37',
+  text: '#F0F0F0',
+  subText: '#A0A0A0',
+  overlay: 'rgba(0,0,0,0.7)', // Más oscuro para legibilidad
+};
+
+const BACKGROUND_IMAGE = 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1996&auto=format&fit=crop';
 
 const LoginScreen = ({ navigation }) => {
   const { loginWithGoogle } = useContext(AuthContext);
   const [isGoogleLoading, setGoogleLoading] = useState(false);
 
-  // 1. Configuración Inicial
   useEffect(() => {
     GoogleSignin.configure({
       webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, 
@@ -17,47 +38,36 @@ const LoginScreen = ({ navigation }) => {
     });
   }, []);
 
-  // 2. La Función de Login
   const signIn = async () => {
     setGoogleLoading(true);
     try {
       await GoogleSignin.hasPlayServices();
       const response = await GoogleSignin.signIn();
       
-      // Inteligencia de formato
-      let userInfo = response.data || response;
-      if (typeof userInfo === 'string') {
-          try { userInfo = JSON.parse(userInfo); } catch(e) {}
-      }
+      const googleUser = response.data?.user || response.user;
+      const googleToken = response.data?.idToken || response.idToken;
 
-      // Estrategia de rescate de token
-      const token = userInfo.idToken || userInfo.user?.idToken || userInfo.serverAuthCode;
-      const user = userInfo.user || userInfo;
+      if (googleUser && googleToken) {
+        const normalizedUser = {
+          ...googleUser,
+          picture: googleUser.photo,
+          displayName: googleUser.name,
+          given_name: googleUser.givenName
+        };
 
-      if (token) {
-        console.log("✅ ¡LOGIN EXITOSO!");
-        
-        // A. Ejecutar login en el contexto (guardar token, estado global, etc.)
-        // Usamos await para asegurarnos de que se guarde antes de navegar
-        await loginWithGoogle(token, user);
+        await loginWithGoogle(googleToken, normalizedUser);
 
-        // B. NAVEGACIÓN INTELIGENTE 🧠 (La clave del Guest Mode)
-        // En lugar de ir siempre al Home, preguntamos si hay una pantalla anterior.
         if (navigation.canGoBack()) {
-            navigation.goBack(); // Vuelve al castillo o al Feed donde estabas
+            navigation.goBack();
         } else {
-            navigation.navigate('FeedScreen'); // Fallback por si acaso
+            navigation.navigate('FeedScreen');
         }
-
       } else {
-        Alert.alert("Error", "Google conectó pero no entregó el pase (Token).");
+        Alert.alert("Error", "Google no entregó los datos del perfil.");
       }
       
     } catch (error) {
-      console.log("❌ Error:", error);
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        // Usuario canceló
-      } else {
+      if (error.code !== statusCodes.SIGN_IN_CANCELLED) {
         Alert.alert("Error Login", error.message);
       }
     } finally {
@@ -66,45 +76,118 @@ const LoginScreen = ({ navigation }) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Welcome Explorer 🏰</Text>
+    <ImageBackground 
+      source={{ uri: BACKGROUND_IMAGE }} 
+      style={styles.background}
+      resizeMode="cover"
+    >
+      <StatusBar barStyle="light-content" transparent backgroundColor="transparent" />
       
-      <TouchableOpacity
-        style={styles.googleButton}
-        onPress={signIn}
-        disabled={isGoogleLoading}
-      >
-        {isGoogleLoading ? (
-          <ActivityIndicator color="#555" />
-        ) : (
-          <>
-            <MaterialCommunityIcons name="google" size={24} color="#DB4437" />
-            <Text style={styles.text}>  Sign in with Google</Text>
-          </>
-        )}
-      </TouchableOpacity>
+      {/* Overlay oscuro para resaltar el texto */}
+      <View style={styles.overlay}>
+        
+        <View style={styles.header}>
+          <MaterialCommunityIcons name="compass-outline" size={80} color={THEME.gold} />
+          <Text style={styles.title}>CastleApp</Text>
+          <Text style={styles.subtitle}>Unlock the secrets of history</Text>
+        </View>
 
-      <TouchableOpacity 
-        style={{ marginTop: 20 }} 
-        onPress={() => {
-            if (navigation.canGoBack()) navigation.goBack();
-            else navigation.navigate('FeedScreen');
-        }}
-      >
-        <Text style={{ color: '#888' }}>Continue as Guest</Text>
-      </TouchableOpacity>
-    </View>
+        <View style={styles.footer}>
+          <TouchableOpacity
+            style={styles.googleButton}
+            onPress={signIn}
+            disabled={isGoogleLoading}
+            activeOpacity={0.8}
+          >
+            {isGoogleLoading ? (
+              <ActivityIndicator color={THEME.bg} />
+            ) : (
+              <>
+                <MaterialCommunityIcons name="google" size={24} color={THEME.bg} />
+                <Text style={styles.buttonText}>SIGN IN WITH GOOGLE</Text>
+              </>
+            )}
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.guestButton} 
+            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('FeedScreen')}
+          >
+            <Text style={styles.guestText}>Continue as Guest</Text>
+            <Ionicons name="arrow-forward" size={14} color={THEME.subText} style={{marginLeft: 5}} />
+          </TouchableOpacity>
+        </View>
+
+      </View>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff' },
-  title: { fontSize: 24, marginBottom: 30, fontWeight: 'bold', color: '#333' },
-  googleButton: { 
-    flexDirection: 'row', backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd',
-    paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8, alignItems: 'center', elevation: 2
+  background: {
+    flex: 1,
   },
-  text: { color: '#555', fontWeight: 'bold', fontSize: 16 }
+  overlay: {
+    flex: 1,
+    backgroundColor: THEME.overlay,
+    justifyContent: 'space-between',
+    paddingHorizontal: 40,
+    paddingVertical: 80,
+  },
+  header: {
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  title: {
+    fontSize: 42,
+    fontWeight: 'bold',
+    color: THEME.text,
+    fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif',
+    marginTop: 10,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: THEME.subText,
+    fontStyle: 'italic',
+    marginTop: 5,
+    letterSpacing: 1,
+  },
+  footer: {
+    width: '100%',
+    alignItems: 'center',
+  },
+  googleButton: { 
+    flexDirection: 'row', 
+    backgroundColor: THEME.gold, 
+    width: '100%',
+    paddingVertical: 16, 
+    borderRadius: 12, 
+    alignItems: 'center', 
+    justifyContent: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+  },
+  buttonText: { 
+    color: THEME.bg, 
+    fontWeight: 'bold', 
+    fontSize: 15, 
+    marginLeft: 12,
+    letterSpacing: 1,
+  },
+  guestButton: { 
+    marginTop: 25, 
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+  },
+  guestText: { 
+    color: THEME.subText, 
+    fontSize: 14,
+    textDecorationLine: 'underline',
+  }
 });
 
 export default LoginScreen;

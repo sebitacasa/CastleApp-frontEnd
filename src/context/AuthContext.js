@@ -92,39 +92,31 @@ export const AuthProvider = ({ children }) => {
     };
 
     // 4. NUEVA FUNCIÓN: LOGIN CON GOOGLE
-    const loginWithGoogle = async (googleToken) => {
-        setIsLoading(true);
-        try {
-            console.log("🌍 Token de Google recibido en Context:", googleToken);
-            
-            // --- OPCIÓN A: ENVIAR AL BACKEND (Lo ideal) ---
-            /* const response = await fetch(`${API_URL}/google-login`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: googleToken })
-            });
-            const data = await response.json();
-            // ... guardar data.token y data.user ...
-            */
+  // 1. Agregamos 'user' como segundo parámetro
+const loginWithGoogle = async (googleToken, user) => { 
+    setIsLoading(true);
+    try {
+        console.log("🌍 Token de Google recibido en Context:", googleToken);
+        console.log("👤 Datos del usuario recibidos:", user);
 
-            // --- OPCIÓN B: LOGIN DIRECTO (Para probar ahora) ---
-            // Asumimos que si Google validó, dejamos pasar al usuario.
-            const fakeUser = { username: "Usuario Google", email: "google@gmail.com" };
-            
-            setUserToken(googleToken);
-            setUserInfo(fakeUser);
-            
-            await AsyncStorage.setItem('userToken', googleToken);
-            await AsyncStorage.setItem('userInfo', JSON.stringify(fakeUser));
-            
-            console.log("✅ Sesión iniciada con Google (Local)");
+        // --- OPCIÓN B: LOGIN DIRECTO (Ya no es fake, es real) ---
+        // Guardamos el TOKEN y el objeto USER que viene del LoginScreen
+        setUserToken(googleToken);
+        setUserInfo(user); // 👈 USAMOS EL USUARIO REAL
+        
+        // Guardamos en el almacenamiento del teléfono para que la sesión no se cierre
+        await AsyncStorage.setItem('userToken', googleToken);
+        await AsyncStorage.setItem('userInfo', JSON.stringify(user)); // 👈 GUARDAMOS DATA REAL
+        
+        console.log("✅ Sesión iniciada con datos reales de Google");
 
-        } catch (e) {
-            console.log("Error en login Google:", e);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    } catch (e) {
+        console.log("Error en login Google:", e);
+        Alert.alert("Error", "No se pudo guardar la sesión.");
+    } finally {
+        setIsLoading(false);
+    }
+};
 
     // 5. Función de LOGOUT
     const logout = async () => {

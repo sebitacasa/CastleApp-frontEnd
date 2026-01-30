@@ -17,6 +17,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
+import axios from "axios"
 
 import { FavoritesContext } from '../context/FavoritesContext';
 
@@ -85,28 +86,24 @@ export default function DetailScreen({ route, navigation }) {
     setIsFullScreenVisible(true);
   };
 
-  const handleReadMore = async () => {
-      if (fullDescription) {
-          setIsExpanded(!isExpanded);
-          return;
-      }
+const handleReadMore = async () => {
+  try {
+    setLoadingDesc(true);
+    const response = await axios.get(`${API_BASE}/api/wiki-details`, {
+      params: { title: locationData.wiki_title }
+    });
 
-      try {
-          setLoadingDesc(true);
-          const response = await fetch(`${API_BASE}/api/localizaciones/${locationData.id}/description`);
-          if (response.ok) {
-              const data = await response.json();
-              if (data.description) {
-                  setFullDescription(data.description);
-                  setIsExpanded(true); 
-              }
-          }
-      } catch (error) {
-          Alert.alert("Error", "No se pudo cargar la historia completa.");
-      } finally {
-          setLoadingDesc(false);
-      }
-  };
+    // IMPORTANTE: Tu backend devuelve { full_description: "..." }
+    if (response.data && response.data.full_description) {
+      setFullDescription(response.data.full_description);
+      
+    }
+  } catch (error) {
+    console.error("Error al traer Wiki:", error);
+  } finally {
+    setLoadingDesc(false);
+  }
+};
 
   if (!locationData) return null;
 
@@ -142,41 +139,72 @@ export default function DetailScreen({ route, navigation }) {
     Linking.openURL(url).catch(() => Alert.alert("Error", "No se pudo abrir mapas."));
   };
 
-  const renderDescription = () => {
-      const shortText = locationData.description && locationData.description.length > 5 
-          ? locationData.description 
-          : 'Información histórica clasificada no disponible.';
+useEffect(() => {
+    // Si tenemos el título pero aún no hemos bajado la descripción de Wikipedia
+    if (locationData?.wiki_title && !fullDescription && !loadingDesc) {
+        console.log("📖 Cargando historia completa para:", locationData.wiki_title);
+        handleReadMore(); // Esta función llama a /api/wiki-details
+    }
+}, [locationData?.wiki_title]);
 
-      const textToShow = (isExpanded && fullDescription) ? fullDescription : shortText;
-      const shouldShowButton = shortText.endsWith('...') || shortText.length > MAX_LENGTH || fullDescription;
+// 🛠️ 2. Función de Renderizado Estricta
+const renderDescription = () => {
+    // 1. Decidimos qué texto base usar (Wikipedia si ya cargó, sino Google)
+    const baseText = fullDescription ? fullDescription : (locationData.description || "");
+    
+    // 2. TRUNCADO: Si no está expandido, cortamos a 150 caracteres
+    const textToShow = isExpanded 
+        ? baseText 
+        : baseText.substring(0, 150) + (baseText.length > 150 ? "..." : "");
 
-      return (
-          <View>
-              <Text style={styles.description}>
-                  {textToShow}
-              </Text>
-              
-              {shouldShowButton && (
-                  <TouchableOpacity 
-                      onPress={handleReadMore} 
-                      style={styles.readMoreBtn}
-                      activeOpacity={0.7}
-                      disabled={loadingDesc}
-                  >
-                      {loadingDesc ? (
-                          <ActivityIndicator size="small" color={THEME.gold} style={{ marginRight: 6 }} />
-                      ) : (
-                          <Text style={styles.readMoreText}>
-                              {isExpanded ? 'READ LESS' : 'READ FULL HISTORY'}
-                          </Text>
-                      )}
-                      {!loadingDesc && <Ionicons name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color={THEME.gold} style={{marginLeft: 4}} />}
-                  </TouchableOpacity>
-              )}
-          </View>
-      );
-  };
+    return (
+        <View style={{ marginBottom: 20 }}>
+            <Text style={[styles.description, { lineHeight: 22 }]}>
+                {textToShow}
+            </Text>
+            
+            <TouchableOpacity 
+                onPress={() => {
+                    if (!fullDescription && locationData.wiki_title) {
+                        // Si no hay wiki, la descarga (el useEffect ya lo hace, 
+                        // pero esto es por seguridad si el usuario pulsa rápido)
+                        handleReadMore(); 
+                        setIsExpanded(true);
+                    } else {
+                        // Toggle normal
+                        setIsExpanded(!isExpanded);
+                    }
+                }} 
+                style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center' }}
+            >
+                {loadingDesc ? (
+                    <ActivityIndicator size="small" color={THEME.gold} />
+                ) : (
+                    <>
+                        <Text style={[styles.readMoreText, { color: THEME.gold, fontWeight: 'bold' }]}>
+                            {isExpanded ? 'SHOW LESS' : 'READ FULL HISTORY FROM WIKIPEDIA'}
+                        </Text>
+                        <Ionicons 
+                            name={isExpanded ? "chevron-up" : "chevron-down"} 
+                            size={16} 
+                            color={THEME.gold} 
+                            style={{ marginLeft: 5 }} 
+                        />
+                    </>
+                )}
+            </TouchableOpacity>
 
+            {isExpanded && fullDescription && (
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 15, opacity: 0.5 }}>
+                    <MaterialCommunityIcons name="wikipedia" size={14} color={THEME.gold} />
+                    <Text style={{ color: THEME.gold, fontSize: 10, marginLeft: 5 }}>
+                        WIKIPEDIA SOURCE
+                    </Text>
+                </View>
+            )}
+        </View>
+    );
+};
   const renderCarouselItem = ({ item, index }) => {
     const imageUrl = getProcessedUrl(item);
     if (!imageUrl) return null;

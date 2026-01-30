@@ -8,7 +8,7 @@ export default {
     "scheme": "castleapp-dev",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/Images/brujula.png",
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -21,9 +21,9 @@ export default {
     },
     "android": {
       "package": "com.sebit.castleapp",
-      "versionCode": 11, 
+      "versionCode": 14, 
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/Images/brujula.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [

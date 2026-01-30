@@ -57,10 +57,10 @@ const StoryCard = memo(({ item, navigation }) => {
   };
 
   // Helper para limpiar el HTML del autor
-  const cleanAuthor = (text) => {
-      if (!text) return 'Wiki Commons';
-      return text.replace(/<[^>]*>?/gm, '').trim();
-  };
+  // const cleanAuthor = (text) => {
+  //     if (!text) return 'Wiki Commons';
+  //     return text.replace(/<[^>]*>?/gm, '').trim();
+  // };
 
   return (
     <TouchableOpacity 
@@ -112,13 +112,13 @@ const StoryCard = memo(({ item, navigation }) => {
         </TouchableOpacity>
 
         {/* F. Badge de Créditos / Autor (Bottom-Right) */}
-        {finalUrl && (
+        {/* {finalUrl && (
             <View style={styles.creditBadge}>
                 <Text style={styles.creditText} numberOfLines={1}>
                     📸 {cleanAuthor(item.author)} • {item.license || 'CC BY'}
                 </Text>
             </View>
-        )}
+        )} */}
       </View>
 
       {/* 2. SECCIÓN DE INFORMACIÓN */}
