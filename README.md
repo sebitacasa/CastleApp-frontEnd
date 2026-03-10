@@ -1,7 +1,4 @@
-Gemini dijo
-¡Excelente! Un buen README.md es la diferencia entre un repositorio que alguien ignora y uno que un reclutador en Viena se detiene a leer. Dado que tu app mezcla geolocalización, historia europea y PostGIS, tenemos material de sobra para impresionar.
 
-Aquí tienes una estructura profesional en inglés (el estándar en IT) para tu repositorio de GitHub. He incluido secciones que resaltan tus habilidades técnicas y tu visión personal.
 
 🏰 CastleApp (Echoes & Paths)
 Discover European heritage through geospatial exploration.
@@ -38,3 +35,4 @@ Europeana API Integration: Seamless fetching of European cultural heritage data.
 📸 Screenshots and Videos![WhatsApp Image 4 2026-03-10 at 12 37 38 PM](https://github.com/user-attachments/assets/6ba4a6fb-f330-45c1-bb48-0311655e7888)
 ![WhatsApp Image 2 2026-03-10 at 12 37 41 PM](https://github.com/user-attachments/assets/d63c5c4a-1abb-4f97-b6f5-bfd36947e8bc)![WhatsApp Image 4  2026-03-10 at 12 37 38 PM](https://github.com/user-attachments/assets/434fb1f6-1e65-436a-abfa-358ae4636432)
 ![WhatsApp Image 3 2026-03-10 at 12 37 40 PM](https://github.com/user-attachments/assets/51d0dff0-5ebe-4bbb-ad25-ce8c73ae785e)
+
