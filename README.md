@@ -24,7 +24,14 @@ Whether you are a traveler or a local history enthusiast, CastleApp transforms y
     <td><img src="https://github.com/user-attachments/assets/6ba4a6fb-f330-45c1-bb48-0311655e7888" width="250" alt="Map Screen"></td>
     <td><img src="https://github.com/user-attachments/assets/d63c5c4a-1abb-4f97-b6f5-bfd36947e8bc" width="250" alt="Feed Screen"></td>
     <td><img src="https://github.com/user-attachments/assets/51d0dff0-5ebe-4bbb-ad25-ce8c73ae785e" width="250" alt="Details Screen"></td>
-    https://github.com/user-attachments/assets/53c14bdd-ea16-4d4c-be1d-1390f2ca8ef9
+    <td align="center">
+      <video src="https://github.com/user-attachments/assets/2584a9d7-9dcd-49f2-973d-042882cf15fd"
+
+
+
+mp4" width="220" controls></video>
+    </td>
+    
   </tr>
 </table>
 
