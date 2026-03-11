@@ -25,7 +25,7 @@ Whether you are a traveler or a local history enthusiast, CastleApp transforms y
     <td align="center"><img src="https://github.com/user-attachments/assets/d63c5c4a-1abb-4f97-b6f5-bfd36947e8bc" width="220" alt="Feed Screen"></td>
     <td align="center"><img src="https://github.com/user-attachments/assets/51d0dff0-5ebe-4bbb-ad25-ce8c73ae785e" width="220" alt="Details Screen"></td>
     <td align="center">
-      <video src="https://github.com/user-attachments/assets/2584a9d7-9dcd-49f2-973d-042882cf15fd" width="220" controls title="CastleApp Demo Video"></video>
+      <video src="https://github.com/user-attachments/assets/56492b0f-b5db-43a4-8b6d-e553b67623d2"width="220" controls title="CastleApp Demo Video"></video>
     </td>
   </tr>
 </table>
@@ -49,6 +49,7 @@ Whether you are a traveler or a local history enthusiast, CastleApp transforms y
 
 ## 🧠 The "Why" behind this project
 After living in different continents—from the vast landscapes of **Australia** to the historic heart of **Europe**—I've learned that objects and places are vessels for stories. This app is my way of ensuring those "echoes" aren't lost. It represents my commitment to building technology that serves culture and memory, not just utility.
+
 
 
 
