@@ -48,4 +48,9 @@ Whether you are a traveler or a local history enthusiast, CastleApp transforms y
 After living in different continents—from the vast landscapes of **Australia** to the historic heart of **Europe**—I've learned that objects and places are vessels for stories. This app is my way of ensuring those "echoes" aren't lost. It represents my commitment to building technology that serves culture and memory, not just utility.
 
 
+https://github.com/user-attachments/assets/53c14bdd-ea16-4d4c-be1d-1390f2ca8ef9
+
+
+
+
 
