@@ -16,22 +16,17 @@ Whether you are a traveler or a local history enthusiast, CastleApp transforms y
 ## 📸 Screenshots
 <table style="width: 100%;">
   <tr>
-    <td align="center" width="33%"><b>Main Map</b></td>
-    <td align="center" width="33%"><b>Discovery Feed</b></td>
-    <td align="center" width="33%"><b>Landmark Details</b></td>
-  </tr>
+    <td align="center" width="25%"><b>Main Map</b></td>
+    <td align="center" width="25%"><b>Discovery Feed</b></td>
+    <td align="center" width="25%"><b>Landmark Details</b></td>
+    <td align="center" width="25%"><b>App Demo Video</b></td> </tr>
   <tr>
-    <td><img src="https://github.com/user-attachments/assets/6ba4a6fb-f330-45c1-bb48-0311655e7888" width="250" alt="Map Screen"></td>
-    <td><img src="https://github.com/user-attachments/assets/d63c5c4a-1abb-4f97-b6f5-bfd36947e8bc" width="250" alt="Feed Screen"></td>
-    <td><img src="https://github.com/user-attachments/assets/51d0dff0-5ebe-4bbb-ad25-ce8c73ae785e" width="250" alt="Details Screen"></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/6ba4a6fb-f330-45c1-bb48-0311655e7888" width="220" alt="Map Screen"></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/d63c5c4a-1abb-4f97-b6f5-bfd36947e8bc" width="220" alt="Feed Screen"></td>
+    <td align="center"><img src="https://github.com/user-attachments/assets/51d0dff0-5ebe-4bbb-ad25-ce8c73ae785e" width="220" alt="Details Screen"></td>
     <td align="center">
-      <video src="https://github.com/user-attachments/assets/2584a9d7-9dcd-49f2-973d-042882cf15fd"
-
-
-
-mp4" width="220" controls></video>
+      <video src="https://github.com/user-attachments/assets/2584a9d7-9dcd-49f2-973d-042882cf15fd" width="220" controls title="CastleApp Demo Video"></video>
     </td>
-    
   </tr>
 </table>
 
