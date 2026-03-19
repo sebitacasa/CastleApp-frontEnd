@@ -1,15 +1,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
-  View, Text, TouchableOpacity, Image, ActivityIndicator, Alert 
+  View, Text, TouchableOpacity, Image, ActivityIndicator, Alert, StyleSheet 
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location'; 
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 
+// Asegúrate de que la ruta a tus estilos sea correcta
 import { styles, THEME } from './MapScreen.styles';
 
-const API_BASE = 'https://castleapp-backend-production.up.railway.app';
+// 👇 IMPORTAMOS LA FUNCIÓN QUE CONECTA CON TU DB
+import { getMapLocations } from '../api/locationsApi.js';
 
 export default function MapScreen() {
   const mapRef = useRef(null);
@@ -23,39 +25,16 @@ export default function MapScreen() {
   const [userLocation, setUserLocation] = useState(null);
   const [fetchingLocation, setFetchingLocation] = useState(true);
 
-  // --- 1. HELPER DE LIMPIEZA DE DATOS ---
-  const cleanData = (data) => {
-      return data.map(item => {
-          let cleanImg = item.image_url;
-          if (typeof cleanImg === 'string' && cleanImg.startsWith('{')) {
-              cleanImg = cleanImg.replace(/[{}"\\]/g, '').split(',')[0];
-          }
-          if (Array.isArray(cleanImg)) {
-              cleanImg = cleanImg.length > 0 ? cleanImg[0] : null;
-          }
-          return { ...item, image_url: cleanImg };
-      });
-  };
-
-  const getSecureImage = (item) => {
-      if (!item) return 'https://via.placeholder.com/150';
-      let rawUrl = item.image_url;
-      if (!rawUrl) return 'https://via.placeholder.com/150';
-      if (rawUrl.includes(API_BASE)) return rawUrl;
-      return `${API_BASE}/api/image-proxy?url=${encodeURIComponent(rawUrl)}`;
-  };
-
-  // --- 2. OBTENER UBICACIÓN REAL ---
+  // --- 1. OBTENER UBICACIÓN REAL ---
   useEffect(() => {
     (async () => {
       try {
-        // Pedimos permiso para usar el GPS
         let { status } = await Location.requestForegroundPermissionsAsync();
         
         if (status !== 'granted') {
           Alert.alert(
             "Permiso denegado", 
-            "Necesitamos tu ubicación para mostrarte los castillos cercanos. Usaremos una ubicación por defecto."
+            "Usaremos una ubicación por defecto (Buenos Aires)."
           );
           const fallback = { latitude: -34.6037, longitude: -58.3816, latitudeDelta: 0.05, longitudeDelta: 0.05 };
           setUserLocation(fallback);
@@ -63,7 +42,6 @@ export default function MapScreen() {
           return;
         }
 
-        // Obtenemos la posición actual real del sensor
         let location = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
@@ -71,14 +49,13 @@ export default function MapScreen() {
         const currentCoords = {
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
-          latitudeDelta: 0.02, // Zoom inicial
+          latitudeDelta: 0.02,
           longitudeDelta: 0.02,
         };
 
-        console.log("📍 Ubicación real obtenida:", currentCoords);
         setUserLocation(currentCoords);
 
-        // Si no venimos de una búsqueda específica, buscamos lo que hay alrededor del usuario
+        // Si no venimos de una búsqueda específica, cargamos lo cercano
         if (!route.params?.targetCoordinate) {
             fetchNearbyLocations(currentCoords);
         }
@@ -87,30 +64,24 @@ export default function MapScreen() {
         console.log("Error al obtener ubicación:", error);
         const fallback = { latitude: -34.6037, longitude: -58.3816, latitudeDelta: 0.05, longitudeDelta: 0.05 };
         setUserLocation(fallback);
+        fetchNearbyLocations(fallback);
       } finally {
         setFetchingLocation(false);
       }
     })();
   }, []);
 
-  // --- 3. BÚSQUEDA ---
+  // --- 2. CARGAR LUGARES (Usando api.js) ---
   const fetchNearbyLocations = async (region) => {
     if (!region) return;
     setLoading(true);
     try {
-        const rawRadius = Math.round((region.latitudeDelta * 111000) / 2);
-        const searchRadius = Math.max(2000, Math.min(rawRadius, 50000));
-        const url = `${API_BASE}/api/localizaciones?page=1&limit=50&lat=${region.latitude}&lon=${region.longitude}&radius=${searchRadius}`;
-        
-        const response = await fetch(url);
-        const json = await response.json();
-        
-        if (json.data) {
-            const cleaned = cleanData(json.data);
-            setLocations(cleaned);
-        }
+        // 👇 AQUÍ ESTÁ EL CAMBIO PRINCIPAL
+        // Ya no usamos fetch() directo, usamos el servicio que filtra y limpia los datos
+        const data = await getMapLocations(region.latitude, region.longitude);
+        setLocations(data);
     } catch (error) {
-      console.error("Error al buscar localizaciones:", error);
+      console.error("Error cargando mapa:", error);
     } finally {
       setLoading(false);
     }
@@ -118,14 +89,18 @@ export default function MapScreen() {
 
   const onRegionChangeComplete = (newRegion) => {
       if (searchTimeout.current) clearTimeout(searchTimeout.current);
+      // Esperamos 1 seg después de mover el mapa para recargar
       searchTimeout.current = setTimeout(() => fetchNearbyLocations(newRegion), 1000);
   };
 
   const onMarkerPress = (loc) => {
       setSelectedLocation(loc); 
+      // Centrar mapa un poco más arriba para dejar espacio a la tarjeta
       mapRef.current?.animateToRegion({
-          latitude: loc.latitude, longitude: loc.longitude,
-          latitudeDelta: 0.015, longitudeDelta: 0.015,
+          latitude: loc.latitude, 
+          longitude: loc.longitude,
+          latitudeDelta: 0.015, 
+          longitudeDelta: 0.015,
       }, 500);
   };
 
@@ -133,8 +108,8 @@ export default function MapScreen() {
   if (fetchingLocation && !userLocation) {
     return (
       <View style={[styles.container, styles.centerContent]}>
-        <ActivityIndicator size="large" color={THEME.primary} />
-        <Text style={{marginTop: 15, color: '#333'}}>Detectando tu ubicación...</Text>
+        <ActivityIndicator size="large" color={THEME.primary || '#d4af37'} />
+        <Text style={{marginTop: 15, color: '#333'}}>Searching for your location...</Text>
       </View>
     );
   }
@@ -145,9 +120,6 @@ export default function MapScreen() {
         ref={mapRef}
         provider={PROVIDER_GOOGLE}
         style={styles.map}
-        
-        // 👇 ELIMINAMOS customMapStyle PARA VOLVER A LOS COLORES ORIGINALES
-        
         showsUserLocation={true} 
         showsMyLocationButton={true}
         initialRegion={userLocation}
@@ -158,18 +130,31 @@ export default function MapScreen() {
           <Marker
             key={`${loc.id}-${index}`}
             coordinate={{ latitude: loc.latitude, longitude: loc.longitude }}
+            // 🔴 Rojo para tus lugares oficiales, Azul para museos, etc.
             pinColor={ loc.category === 'Museums' ? 'blue' : 'red' }
+            title={loc.name}
             onPress={() => onMarkerPress(loc)}
           />
         ))}
       </MapView>
 
-      {/* LOADER FLOTANTE */}
+      {/* LOADER FLOTANTE (Cuando te mueves en el mapa) */}
       {loading && (
-        <View style={[styles.loaderContainer, { backgroundColor: 'rgba(255,255,255,0.8)' }]}>
+        <View style={[styles.loaderContainer, { backgroundColor: 'rgba(255,255,255,0.9)' }]}>
           <ActivityIndicator size="small" color="#333" />
-          <Text style={[styles.loaderText, { color: '#333' }]}>Buscando...</Text>
+          <Text style={[styles.loaderText, { color: '#333' }]}>Updating zone...</Text>
         </View>
+      )}
+
+      {/* 🟢 BOTÓN FLOTANTE (+) PARA AGREGAR NUEVO LUGAR */}
+      {/* Solo se muestra si no hay un lugar seleccionado */}
+      {!selectedLocation && (
+        <TouchableOpacity 
+            style={localStyles.fab}
+            onPress={() => navigation.navigate('Search')} 
+        >
+            <Ionicons name="add" size={36} color="white" />
+        </TouchableOpacity>
       )}
 
       {/* TARJETA DE DETALLE */}
@@ -177,11 +162,13 @@ export default function MapScreen() {
         <TouchableOpacity 
             style={styles.cardContainer}
             activeOpacity={0.95}
+            // Navegamos al detalle. Nota: selectedLocation ya tiene la URL limpia gracias a api.js
             onPress={() => navigation.navigate('Detail', { locationData: selectedLocation })}
         >
             <View style={styles.cardImageWrapper}>
                 <Image 
-                    source={{ uri: getSecureImage(selectedLocation) }}
+                    // Ya no necesitamos getSecureImage, api.js ya nos dio una URL válida
+                    source={{ uri: selectedLocation.image_url }}
                     style={styles.cardImage}
                     resizeMode="cover"
                 />
@@ -189,7 +176,7 @@ export default function MapScreen() {
             <View style={styles.textContent}>
                 <Text numberOfLines={1} style={styles.cardTitle}>{selectedLocation.name}</Text>
                 <Text numberOfLines={1} style={styles.cardSubtitle}>
-                    {selectedLocation.category} • {selectedLocation.country || "Ubicación"}
+                    {selectedLocation.category || 'Historical Site'} • {selectedLocation.country || "Ubicación"}
                 </Text>
                 <View style={styles.detailsBtn}>
                     <Text style={styles.detailsBtnText}>Ver Detalles</Text>
@@ -202,10 +189,31 @@ export default function MapScreen() {
         </TouchableOpacity>
       )}
 
-      {/* BOTÓN ATRÁS */}
+      {/* BOTÓN ATRÁS (Opcional) */}
       <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={24} color="#333" />
       </TouchableOpacity>
     </View>
   );
 }
+
+// Estilos locales para el botón flotante (FAB)
+const localStyles = StyleSheet.create({
+    fab: {
+        position: 'absolute',
+        bottom: 40,
+        right: 20,
+        width: 60,
+        height: 60,
+        borderRadius: 30,
+        backgroundColor: '#d4af37', // Color dorado
+        justifyContent: 'center',
+        alignItems: 'center',
+        elevation: 6, // Sombra en Android
+        shadowColor: '#000', // Sombra en iOS
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 4,
+        zIndex: 100, // Asegura que esté por encima del mapa
+    }
+});

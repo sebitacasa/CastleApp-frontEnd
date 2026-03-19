@@ -33,6 +33,7 @@ const LoginScreen = ({ navigation }) => {
   useEffect(() => {
     GoogleSignin.configure({
       webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, 
+    //webClientId: "51947307719-ehsb2ihd1tv5mct6o98oklqscolb0p22.apps.googleusercontent.com", 
       offlineAccess: true,
       forceCodeForRefreshToken: true,
     });

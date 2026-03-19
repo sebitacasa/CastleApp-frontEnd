@@ -1,8 +1,15 @@
+ 
 import React, { createContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Alert } from 'react-native';
 
-// IMPORTANTE: Si usas emulador Android, usa 10.0.2.2. Si es físico, tu IP real.
-const API_URL = 'http://10.0.2.2:8080/auth'; 
+// 👇 CONFIGURACIÓN DE IP
+// 🏠 MODO LOCAL (Emulador):
+const BASE_URL = 'https://castleapp-backend-production.up.railway.app'; 
+// 🚀 MODO RAILWAY (Cuando ya subas todo):
+// const BASE_URL = 'https://castleapp-backend-production.up.railway.app';
+
+const API_URL = `${BASE_URL}/auth`; 
 
 export const AuthContext = createContext();
 
@@ -11,7 +18,7 @@ export const AuthProvider = ({ children }) => {
     const [userToken, setUserToken] = useState(null);
     const [userInfo, setUserInfo] = useState(null);
 
-    // 1. Al abrir la App, verificar si ya hay un token guardado
+    // 1. Verificar sesión al inicio
     const isLoggedIn = async () => {
         try {
             setIsLoading(true);
@@ -33,7 +40,7 @@ export const AuthProvider = ({ children }) => {
         isLoggedIn();
     }, []);
 
-    // 2. Función de LOGIN (Email/Pass)
+    // 2. Login Normal
     const login = async (email, password) => {
         setIsLoading(true);
         try {
@@ -48,21 +55,20 @@ export const AuthProvider = ({ children }) => {
             if (response.ok) {
                 setUserToken(data.token);
                 setUserInfo(data.user);
-                
                 await AsyncStorage.setItem('userToken', data.token);
                 await AsyncStorage.setItem('userInfo', JSON.stringify(data.user));
             } else {
-                alert(data.message || 'Error en login');
+                Alert.alert("Error", data.message || 'Error en login');
             }
         } catch (error) {
             console.error(error);
-            alert("No se pudo conectar con el servidor");
+            Alert.alert("Error", "No se pudo conectar con el servidor");
         } finally {
             setIsLoading(false);
         }
     };
 
-    // 3. Función de REGISTRO
+    // 3. Registro Normal
     const register = async (username, email, password) => {
         setIsLoading(true);
         try {
@@ -77,48 +83,68 @@ export const AuthProvider = ({ children }) => {
             if (response.ok) {
                 setUserToken(data.token);
                 setUserInfo(data.user);
-                
                 await AsyncStorage.setItem('userToken', data.token);
                 await AsyncStorage.setItem('userInfo', JSON.stringify(data.user));
             } else {
-                alert(data.message || 'Error en registro');
+                Alert.alert("Error", data.message || 'Error en registro');
             }
         } catch (error) {
             console.error(error);
-            alert("Error al intentar registrarse");
+            Alert.alert("Error", "Error al intentar registrarse");
         } finally {
             setIsLoading(false);
         }
     };
 
-    // 4. NUEVA FUNCIÓN: LOGIN CON GOOGLE
-  // 1. Agregamos 'user' como segundo parámetro
-const loginWithGoogle = async (googleToken, user) => { 
-    setIsLoading(true);
-    try {
-        console.log("🌍 Token de Google recibido en Context:", googleToken);
-        console.log("👤 Datos del usuario recibidos:", user);
+    // 4. 🔥 LOGIN CON GOOGLE (CONECTADO AL BACKEND Y CON LOGS)
+    const loginWithGoogle = async (googleToken) => { 
+        setIsLoading(true);
+        try {
+            // LOG 1: Ver si llegamos aquí
+            console.log("\n🔵 1. [AuthContext] Enviando Token de Google al Backend...");
+            console.log("📨 Token enviado:", googleToken.substring(0, 20) + "..."); // Solo mostramos el principio para no ensuciar
 
-        // --- OPCIÓN B: LOGIN DIRECTO (Ya no es fake, es real) ---
-        // Guardamos el TOKEN y el objeto USER que viene del LoginScreen
-        setUserToken(googleToken);
-        setUserInfo(user); // 👈 USAMOS EL USUARIO REAL
-        
-        // Guardamos en el almacenamiento del teléfono para que la sesión no se cierre
-        await AsyncStorage.setItem('userToken', googleToken);
-        await AsyncStorage.setItem('userInfo', JSON.stringify(user)); // 👈 GUARDAMOS DATA REAL
-        
-        console.log("✅ Sesión iniciada con datos reales de Google");
+            const response = await fetch(`${API_URL}/google`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token: googleToken }) 
+            });
 
-    } catch (e) {
-        console.log("Error en login Google:", e);
-        Alert.alert("Error", "No se pudo guardar la sesión.");
-    } finally {
-        setIsLoading(false);
-    }
-};
+            const data = await response.json();
+            
+            // LOG 2: Ver qué respondió el servidor
+            console.log("🔙 2. [AuthContext] Respuesta COMPLETA del Backend:", JSON.stringify(data, null, 2));
 
-    // 5. Función de LOGOUT
+            if (response.ok) {
+                const backendUser = data.user;
+                const appToken = data.token;
+
+                if (!backendUser || !backendUser.id) {
+                    throw new Error("El backend no devolvió un usuario válido");
+                }
+
+                // LOG 3: Confirmación de éxito
+                console.log(`✅ 3. [AuthContext] Login Exitoso. Guardando Usuario ID: ${backendUser.id}`);
+
+                setUserToken(appToken);
+                setUserInfo(backendUser); 
+                
+                await AsyncStorage.setItem('userToken', appToken);
+                await AsyncStorage.setItem('userInfo', JSON.stringify(backendUser));
+            } else {
+                console.log("❌ [AuthContext] El Backend rechazó el login:", data.message);
+                Alert.alert("Error de Login", data.message || 'Falló validación con Google');
+            }
+
+        } catch (e) {
+            console.log("🔥 [AuthContext] Error CRÍTICO en login Google:", e);
+            Alert.alert("Error", "Fallo al conectar con el servidor.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // 5. Logout
     const logout = async () => {
         setIsLoading(true);
         setUserToken(null);
@@ -133,7 +159,7 @@ const loginWithGoogle = async (googleToken, user) => {
             login, 
             register, 
             logout, 
-            loginWithGoogle, // <--- ¡AQUÍ ESTABA EL ERROR! Faltaba agregar esto
+            loginWithGoogle, 
             isLoading, 
             userToken, 
             userInfo 

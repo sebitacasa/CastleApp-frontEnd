@@ -29,7 +29,8 @@ const CitySearch = ({ onLocationSelect }) => {
     'PL', 'CZ', 'SK', 'HU', 'EE', 'LV', 'LT', 
     'RO', 'BG', 'MD', 'UA', 'BY', 'RU', 
     'AL', 'HR', 'BA', 'RS', 'ME', 'MK', 'SI', 'XK',
-    'US', 'CA', 'MX', 'AR', 'BR', 'CL', 'CO', 'PE', 'UY', 'EC', 'BO', 'PY', 'VE', 'CR', 'PA'
+    'US', 'CA', 'MX', 'AR', 'BR', 'CL', 'CO', 'PE', 'UY', 'EC', 'BO', 'PY', 'VE', 'CR', 'PA',
+    'AU', 'NZ'
   ];
 
   useEffect(() => {

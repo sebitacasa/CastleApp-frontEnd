@@ -2,12 +2,13 @@ import React, { useState, useEffect, useCallback, useContext, useRef, useMemo } 
 import { 
   View, Text, FlatList, ActivityIndicator, 
   StatusBar, RefreshControl, TouchableOpacity, 
-  ImageBackground, Animated, Image, StyleSheet, Dimensions, Platform
+  ImageBackground, Animated, Image, StyleSheet, Dimensions, Platform, Alert
 } from 'react-native';
 
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import * as Location from 'expo-location'; 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { AuthContext } from '../context/AuthContext';
 import StoryCard from '../components/StoryCard';
@@ -27,37 +28,45 @@ const THEME = {
 };
 
 const API_BASE = 'https://castleapp-backend-production.up.railway.app';
+
+// 20 es el límite duro de Google Places API por página
 const ITEMS_PER_PAGE = 20; 
+// Mínimo de items en pantalla antes de dejar de pedir páginas automáticas
+const MIN_ITEMS_TO_FILL_SCREEN = 15; 
+
 const HEADER_HEIGHT = 280; 
 const HEADER_IMAGE = 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1996&auto=format&fit=crop';
 const ITEM_HEIGHT = 320; 
-const CACHE_RADIUS_KM = 1.0; 
 
-const categories = [
-  'All', 'Castles', 'Ruins', 'Museums', 'Statues', 'Plaques', 'Busts', 'Stolperstein', 'Historic Site', 'Religious', 'Towers', 'Tourist', 'Others'
-];
+// ⚡ CACHE CONFIG
+const CACHE_RADIUS_KM = 5.0; 
+const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; 
 
-// ==================================================
-// 🖼️ IMÁGENES POR DEFECTO (FALLBACK)
-// ==================================================
-const CATEGORY_DEFAULTS = {
-    'Castles': 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?q=80&w=600&auto=format&fit=crop',
-    'Ruins': 'https://images.unsplash.com/photo-1565017227-227e57c43313?q=80&w=600&auto=format&fit=crop',
-    'Museums': 'https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7?q=80&w=600&auto=format&fit=crop',
-    'Religious': 'https://images.unsplash.com/photo-1548625361-58a9b86aa83b?q=80&w=600&auto=format&fit=crop',
-    'Statues': 'https://images.unsplash.com/photo-1595166671041-380d19d67b2d?q=80&w=600&auto=format&fit=crop',
-    'Busts': 'https://images.unsplash.com/photo-1574350518720-d92affb18bed?q=80&w=600&auto=format&fit=crop',
-    'Plaques': 'https://images.unsplash.com/photo-1596627685695-1f90df7e20bc?q=80&w=600&auto=format&fit=crop',
-    'Stolperstein': 'https://images.unsplash.com/photo-1629230623232-2d17482436d6?q=80&w=600&auto=format&fit=crop',
-    'Towers': 'https://images.unsplash.com/photo-1571168538867-ad36fe110cc4?q=80&w=600&auto=format&fit=crop',
-    'Tourist': 'https://images.unsplash.com/photo-1504198458649-3128b932f49e?q=80&w=600&auto=format&fit=crop',
-    'Historic Site': 'https://images.unsplash.com/photo-1461360370896-922624d12aa1?q=80&w=600&auto=format&fit=crop',
-    'Others': 'https://images.unsplash.com/photo-1447023029226-ef8f6b52e3ea?q=80&w=600&auto=format&fit=crop'
+// 🛡️ SEGURIDAD DE UBICACIÓN
+const MAX_RADIUS_KM = 100; 
+
+// 🌍 DICCIONARIO DE DETECCIÓN
+const GLOBAL_KEYWORDS = {
+    castles: ['schloss', 'burg', 'festung', 'palast', 'castle', 'fortress', 'palace', 'citadel', 'castillo', 'fortaleza', 'alcázar', 'château', 'forteresse', 'castello', 'fortezza', 'castelo', 'hrad', 'vár', 'slot'],
+    ruins: ['ruin', 'ruine', 'ruina', 'rovina', 'trosky'],
+    museums: ['museum', 'musée', 'museo', 'gallery', 'galerie', 'pinakothek'],
+    religious: ['church', 'kirche', 'église', 'cathedral', 'dom', 'catedral', 'abbey', 'kloster', 'monastery', 'chapel', 'kapelle', 'basilica', 'basílica', 'santuario']
 };
 
-// ==================================================
-// 💀 SKELETON CARD (Animado)
-// ==================================================
+const categories = [
+  'All', 'Castles', 'Ruins', 'Museums', 'Religious', 'Historic Site', 'Community'
+];
+
+const CATEGORY_DEFAULTS = {
+    'Castles': 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310',
+    'Ruins': 'https://images.unsplash.com/photo-1565017227-227e57c43313',
+    'Museums': 'https://images.unsplash.com/photo-1566127444979-b3d2b654e3d7',
+    'Religious': 'https://images.unsplash.com/photo-1548625361-58a9b86aa83b',
+    'Historic Site': 'https://images.unsplash.com/photo-1599946347371-68eb71b16afc',
+    'Community': 'https://images.unsplash.com/photo-1517457373958-b7bdd4587205',
+    'Others': 'https://images.unsplash.com/photo-1447023029226-ef8f6b52e3ea'
+};
+
 const SkeletonCard = () => {
   const opacityAnim = useRef(new Animated.Value(0.3)).current;
   useEffect(() => {
@@ -82,17 +91,8 @@ const SkeletonCard = () => {
   );
 };
 
-// ==================================================
-// 💾 CACHÉ GLOBAL
-// ==================================================
-let GLOBAL_CACHE = {
-    lat: null, lon: null, category: 'All', data: [], label: "Current Location"
-};
-
-// ==================================================
-// 🧮 HELPERS
-// ==================================================
 const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 0; // Evita NaN
   const nLat1 = parseFloat(lat1); const nLon1 = parseFloat(lon1);
   const nLat2 = parseFloat(lat2); const nLon2 = parseFloat(lon2);
   const R = 6371; 
@@ -104,64 +104,28 @@ const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
 };
 const deg2rad = (deg) => deg * (Math.PI / 180);
 
-// ==================================================
-// 🏰 COMPONENTE PRINCIPAL
-// ==================================================
 export default function FeedScreen() {
   const navigation = useNavigation();
   const { userInfo, logout } = useContext(AuthContext);
 
-  console.log("DEBUG - Estructura de userInfo:", JSON.stringify(userInfo, null, 2));
-
-const isLoggedIn = !!userInfo; // Si existe el objeto, asumimos login (mejora esto si tu auth context limpia userInfo al salir)
-
-  // 2. Buscar FOTO en todas las estructuras posibles de Google/Auth0/Supabase
-// 1. Extraer FOTO (Añadidas llaves de Firebase y Supabase)
-  const userPhoto = 
-      userInfo?.picture || 
-      userInfo?.photoURL ||          // 👈 Común en Firebase
-      userInfo?.photo || 
-      userInfo?.avatar_url || 
-      userInfo?.user_metadata?.avatar_url || // 👈 Común en Supabase
-      userInfo?.user?.photoURL ||
-      userInfo?.user?.picture || 
-      null;
-
-  // 2. Extraer NOMBRE
-  let rawName = 
-      userInfo?.displayName ||       // 👈 Común en Firebase
-      userInfo?.name || 
-      userInfo?.full_name || 
-      userInfo?.user_metadata?.full_name || 
-      userInfo?.given_name || 
-      userInfo?.givenName || 
-      userInfo?.username || 
-      userInfo?.user?.displayName ||
-      userInfo?.email?.split('@')[0];
-
+  const isLoggedIn = !!userInfo; 
+  const userPhoto = userInfo?.picture || userInfo?.avatar_url || userInfo?.user_metadata?.avatar_url || userInfo?.user?.user_metadata?.avatar_url || userInfo?.user?.avatar_url || null;
+  let rawName = userInfo?.name || userInfo?.displayName || userInfo?.username || userInfo?.email?.split('@')[0];
   const userName = rawName ? rawName.split(' ')[0] : 'Explorer';
 
-  // Limpieza final del nombre
- 
   // --- STATE ---
-  const [locations, setLocations] = useState(GLOBAL_CACHE.data || []);
-  const [loading, setLoading] = useState(locations.length === 0);
+  const [locations, setLocations] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
-  const [selectedCategory, setSelectedCategory] = useState(GLOBAL_CACHE.category || 'All');
+  const [selectedCategory, setSelectedCategory] = useState('All');
   
-  const [activeLocation, setActiveLocation] = useState(
-      (GLOBAL_CACHE.lat && GLOBAL_CACHE.lon) 
-      ? { lat: GLOBAL_CACHE.lat, lon: GLOBAL_CACHE.lon, label: GLOBAL_CACHE.label, isManual: false }
-      : null
-  );
-
+  const [activeLocation, setActiveLocation] = useState(null);
   const [searchKey, setSearchKey] = useState(0); 
   const [menuVisible, setMenuVisible] = useState(false);
 
-  // Animation Refs
   const scrollY = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef(null); 
   const scrollYClamped = Animated.diffClamp(scrollY, 0, HEADER_HEIGHT);
@@ -169,145 +133,315 @@ const isLoggedIn = !!userInfo; // Si existe el objeto, asumimos login (mejora es
     inputRange: [0, HEADER_HEIGHT], outputRange: [0, -HEADER_HEIGHT / 1.5], extrapolate: 'clamp', 
   });
 
-  // --- 🛰️ UBI HELPER ---
+  // --- 🛰️ UBI HELPER (GPS REAL + ERROR HANDLING) ---
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') return;
-
-      const lastKnown = await Location.getLastKnownPositionAsync({});
       
-      if (lastKnown) {
-          if (GLOBAL_CACHE.lat) {
-             const dist = getDistanceFromLatLonInKm(GLOBAL_CACHE.lat, GLOBAL_CACHE.lon, lastKnown.coords.latitude, lastKnown.coords.longitude);
-             if (dist > 0.5) { 
-                 setActiveLocation({ lat: lastKnown.coords.latitude, lon: lastKnown.coords.longitude, label: "Current Location", isManual: false });
-             }
-          } else {
-             setActiveLocation({ lat: lastKnown.coords.latitude, lon: lastKnown.coords.longitude, label: "Current Location", isManual: false });
-          }
-      } else {
-          if (!GLOBAL_CACHE.lat) {
-             setActiveLocation({ lat: 48.2082, lon: 16.3738, label: "Vienna (Loading...)", isManual: false });
-          }
+      if (status !== 'granted') {
+          Alert.alert('Permission denied', 'We need your location to show historic places around you.');
+          return;
       }
 
-      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }).then(freshLoc => {
-          setActiveLocation(prev => {
-              if (!prev) return { lat: freshLoc.coords.latitude, lon: freshLoc.coords.longitude, label: "Current Location", isManual: false };
-              const dist = getDistanceFromLatLonInKm(prev.lat, prev.lon, freshLoc.coords.latitude, freshLoc.coords.longitude);
-              if (dist > 0.2) { 
-                  return { lat: freshLoc.coords.latitude, lon: freshLoc.coords.longitude, label: "Current Location", isManual: false };
-              }
-              return prev;
+      // 1. Ubicación rápida
+      const lastKnown = await Location.getLastKnownPositionAsync({});
+      if (lastKnown) {
+          setActiveLocation({ 
+              lat: lastKnown.coords.latitude, 
+              lon: lastKnown.coords.longitude, 
+              label: "Current Location", 
+              isManual: false 
           });
-      }).catch(e => console.log("GPS Preciso ignorado"));
+      }
+
+      // 2. Ubicación Precisa (Con timeout para evitar bloqueo)
+      try {
+          // Timeout de 5s para no bloquear si el GPS del emulador falla
+          const freshLoc = await Promise.race([
+              Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+              new Promise((_, reject) => setTimeout(() => reject(new Error("GPS Timeout")), 5000))
+          ]);
+
+          setActiveLocation(prev => {
+              if (prev?.isManual) return prev;
+              return { 
+                  lat: freshLoc.coords.latitude, 
+                  lon: freshLoc.coords.longitude, 
+                  label: "Current Location", 
+                  isManual: false 
+              };
+          });
+      } catch (error) {
+          console.log("⚠️ GPS Error/Timeout (Usando LastKnown o Default):", error);
+      }
     })();
   }, []);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (activeLocation && locations.length === 0) {
+        loadData(1, false, activeLocation, true);
+      }
+    }, [activeLocation, selectedCategory])
+  );
+
   useEffect(() => {
       if (activeLocation) {
-          const delay = activeLocation.isManual ? 0 : 50; 
+          const delay = activeLocation.isManual ? 100 : 50; 
           const timeout = setTimeout(() => { loadData(1, false, activeLocation); }, delay);
           return () => clearTimeout(timeout);
       }
   }, [activeLocation, selectedCategory]); 
 
   const handleCitySelected = (coordinates, locationName) => {
-    setLocations([]); setLoading(true); 
-    // Guardamos que fue manual para usar "q=" en lugar de "lat/lon"
+    setLocations([]); setPage(1); setHasMore(true); 
     setActiveLocation({ lon: coordinates[0], lat: coordinates[1], label: locationName, isManual: true });
   };
 
   const clearSearch = async () => {
       setLocations([]); setLoading(true); setPage(1); setHasMore(true); setSelectedCategory('All');
       setSearchKey(prev => prev + 1); 
-      const lastKnown = await Location.getLastKnownPositionAsync({});
-      if (lastKnown) setActiveLocation({ lat: lastKnown.coords.latitude, lon: lastKnown.coords.longitude, label: "Current Location", isManual: false });
+      
+      try {
+          const lastKnown = await Location.getLastKnownPositionAsync({});
+          if (lastKnown) {
+              setActiveLocation({ lat: lastKnown.coords.latitude, lon: lastKnown.coords.longitude, label: "Current Location", isManual: false });
+          }
+      } catch (e) {
+          console.log("Error resetting GPS");
+      }
   };
 
-  // 🔥🔥🔥 FUNCIÓN loadData CORREGIDA: PRIORIZA TEXTO SI ES BÚSQUEDA 🔥🔥🔥
-  const loadData = useCallback(async (targetPage = 1, isRefresh = false, locationOverride = null, isSilent = false) => {
-    if (loadingMore && !isSilent) return;
-    const currentLoc = locationOverride || activeLocation;
-    if (!currentLoc) return;
+  // --- 📡 CARGA DE DATOS (MODO ASPIRADORA) ---
+  const loadData = useCallback(async (targetPage = 1, isRefresh = false, locationOverride = null, isSilent = false, recursiveCount = 0) => {
+    // 🛑 Freno de emergencia para recursión infinita (max 5 intentos)
+    if (recursiveCount > 5) {
+        console.log("🛑 Recursión detenida. Se mostraron los que se pudieron.");
+        setLoading(false); setRefreshing(false); setLoadingMore(false);
+        return;
+    }
 
-    if (targetPage === 1 && !isRefresh && !isSilent) {
-        let dist = 9999;
-        if (GLOBAL_CACHE.lat && GLOBAL_CACHE.lon) {
-            dist = getDistanceFromLatLonInKm(GLOBAL_CACHE.lat, GLOBAL_CACHE.lon, currentLoc.lat, currentLoc.lon);
-        }
-        const isSameCategory = GLOBAL_CACHE.category === selectedCategory;
-        
-        // Solo usamos cache si es la misma ubicación Y categoría
-        if (isSameCategory && dist < CACHE_RADIUS_KM && GLOBAL_CACHE.data.length > 0) {
-            if (locations.length === 0) setLocations(GLOBAL_CACHE.data);
-            setLoading(false); setHasMore(true);
-            return; 
-        }
+    if (loadingMore && !isSilent && recursiveCount === 0) return;
+    if (!hasMore && targetPage > 1 && !isRefresh) return;
+
+    const currentLoc = locationOverride || activeLocation;
+    if (!currentLoc || isNaN(currentLoc.lat) || isNaN(currentLoc.lon)) {
+        console.log("⚠️ Sin ubicación válida, esperando...");
+        return;
+    }
+
+    let loadedFromCache = false;
+
+    // CACHÉ (Solo página 1 y si no es recursivo)
+    if (targetPage === 1 && !isRefresh && !currentLoc.isManual && recursiveCount === 0) {
+        try {
+            const cacheKey = `FEED_CACHE_${selectedCategory}`;
+            const cachedData = await AsyncStorage.getItem(cacheKey);
+            if (cachedData) {
+                const parsedCache = JSON.parse(cachedData);
+                const now = new Date().getTime();
+                const dist = getDistanceFromLatLonInKm(currentLoc.lat, currentLoc.lon, parsedCache.lat, parsedCache.lon);
+                
+                if ((now - parsedCache.timestamp < CACHE_EXPIRY_MS) && dist < CACHE_RADIUS_KM && parsedCache.data.length > 0) {
+                    console.log(`💾 [CACHE] Cargando ${parsedCache.data.length} items...`);
+                    setLocations(parsedCache.data);
+                    setLoading(false);
+                    setHasMore(true);
+                    loadedFromCache = true;
+                }
+            }
+        } catch (error) { console.warn("Cache Error", error); }
     }
 
     try {
       if (!isSilent) {
           if (isRefresh) setRefreshing(true);
-          else if (targetPage === 1) { setLoading(true); setHasMore(true); } 
-          else { setLoadingMore(true); }
+          else if (targetPage === 1 && !loadedFromCache && recursiveCount === 0) { 
+              setLoading(true); setHasMore(true); 
+          } 
+          else if (targetPage > 1 || recursiveCount > 0) { 
+              setLoadingMore(true); 
+          }
       }
 
-      let url = `${API_BASE}/api/localizaciones?page=${targetPage}&limit=${ITEMS_PER_PAGE}`;
-      if (selectedCategory !== 'All') url += `&category=${encodeURIComponent(selectedCategory)}`;
+      const ROUTE_PREFIX = `${API_BASE}/api`; 
+      const params = `page=${targetPage}&limit=${ITEMS_PER_PAGE}`;
+      
+      const latFixed = parseFloat(currentLoc.lat).toFixed(6);
+      const lonFixed = parseFloat(currentLoc.lon).toFixed(6);
 
-      // 🔥 LÓGICA INTELIGENTE:
+      // 🌍 RADIO DE 50KM PARA TRAER TODO LO POSIBLE
+      const radiusParam = `&radius=50000`; 
+
+      let url;
+      const textSearchCategories = ['Castles', 'Ruins', 'Religious', 'Historic Site'];
+      const isTextSearch = textSearchCategories.includes(selectedCategory);
+
       if (currentLoc.isManual) {
-          // 1. Si es búsqueda manual (ej: "Salzburg"), enviamos TEXTO ('q')
-          // Esto activa la búsqueda inteligente de Google en el Backend.
-          url += `&q=${encodeURIComponent(currentLoc.label)}`;
+          const query = encodeURIComponent(currentLoc.label);
+          url = `${ROUTE_PREFIX}/external/search?q=${query}&lat=${latFixed}&lon=${lonFixed}&${params}${radiusParam}`;
+      } else if (isTextSearch) {
+          const query = encodeURIComponent(selectedCategory); 
+          url = `${ROUTE_PREFIX}/external/search?q=${query}&lat=${latFixed}&lon=${lonFixed}&${params}${radiusParam}`;
       } else {
-          // 2. Si es GPS (Current Location), enviamos COORDENADAS ('lat/lon')
-          // Esto activa el Radar de Google en el Backend.
-          const latFixed = parseFloat(currentLoc.lat).toFixed(6);
-          const lonFixed = parseFloat(currentLoc.lon).toFixed(6);
-          url += `&lat=${latFixed}&lon=${lonFixed}`; 
+          url = `${ROUTE_PREFIX}/?lat=${latFixed}&lon=${lonFixed}&${params}${radiusParam}`;
+          if (selectedCategory !== 'All' && selectedCategory !== 'Others' && selectedCategory !== 'Community') {
+              url += `&category=${encodeURIComponent(selectedCategory)}`;
+          }
       }
 
-      console.log("📡 Fetching:", url); // Debug para ver qué pedimos
+      console.log(`🌐 [Pag ${targetPage}] Fetching... (Intento: ${recursiveCount})`);
 
-      const response = await fetch(url);
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 15000));
+      const response = await Promise.race([fetch(url), timeoutPromise]);
+
+      if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+
       const json = await response.json();
-      const newData = json.data || [];
+
+      let rawData = [];
+      if (Array.isArray(json)) rawData = json;
+      else if (json.data && Array.isArray(json.data)) rawData = json.data;
+
+      // 1. FILTRO DE SEGURIDAD (CON TOLERANCIA A ERRORES GPS)
+      const filteredData = rawData.filter(item => {
+          // Si es búsqueda manual, confiamos en Google y NO filtramos por distancia
+          if (currentLoc.isManual) return true;
+
+          const rawLat = item.latitude || item.lat || item.geometry?.location?.lat;
+          const rawLon = item.longitude || item.lon || item.geometry?.location?.lng;
+          
+          // Si el item no tiene coordenadas, lo dejamos pasar por si acaso
+          if (!rawLat || !rawLon) return true;
+
+          const dist = getDistanceFromLatLonInKm(currentLoc.lat, currentLoc.lon, rawLat, rawLon);
+          return dist <= MAX_RADIUS_KM; 
+      });
+
+      // 2. CATEGORIZACIÓN INTELIGENTE (EL EMBUDO)
+      const finalData = filteredData.map(item => {
+          if (item.latitude && item.image_url) return item; 
+
+          let finalCat = 'Others'; // Por defecto a las sobras
+          
+          const types = item.types || [];
+          const iconUrl = item.icon || ""; 
+          const nameLower = item.name ? item.name.toLowerCase() : "";
+          const hasKeyword = (list) => list.some(key => nameLower.includes(key));
+
+          // Prioridades
+          if (types.includes('castle') || types.includes('fortress') || (iconUrl.includes('historic') && hasKeyword(GLOBAL_KEYWORDS.castles))) {
+              finalCat = 'Castles';
+          } 
+          else if (hasKeyword(GLOBAL_KEYWORDS.ruins)) {
+              finalCat = 'Ruins';
+          } 
+          else if (types.includes('museum') || types.includes('art_gallery') || iconUrl.includes('museum') || hasKeyword(GLOBAL_KEYWORDS.museums)) {
+              finalCat = 'Museums';
+          } 
+          else if (types.includes('church') || types.includes('place_of_worship') || iconUrl.includes('worship') || hasKeyword(GLOBAL_KEYWORDS.religious)) {
+              finalCat = 'Religious';
+          } 
+          // SITIOS HISTÓRICOS (Estricto)
+          else if (types.includes('historic_site') || types.includes('archaeological_site')) {
+              finalCat = 'Historic Site';
+          }
+          // Si cae aquí, es 'Others' (parques, atracciones turísticas generales, puntos de interés)
+
+          return {
+              id: item.place_id || item.id || Math.random().toString(),
+              name: item.name,
+              description: item.vicinity || item.description || "Historic Place detected via Radar.",
+              latitude: item.geometry?.location?.lat || item.lat,
+              longitude: item.geometry?.location?.lng || item.lon,
+              category: finalCat, 
+              image_url: null, 
+              source: 'google'
+          };
+      });
+
+      // 3. FILTRADO FINAL ESTRICTO
+      const displayData = finalData.filter(item => {
+          if (selectedCategory === 'All') return true;
+          return item.category === selectedCategory;
+      });
+
+      console.log(`📍 Crudos: ${rawData.length} | Mostrados: ${displayData.length}`);
+
+      // ACTUALIZACIÓN DE ESTADO
+      let currentTotalItems = 0;
 
       if (targetPage === 1) {
-          setLocations(newData);
-          if (!isSilent) {
-              GLOBAL_CACHE = {
-                  lat: currentLoc.lat, lon: currentLoc.lon, category: selectedCategory, data: newData, label: currentLoc.label
-              };
+          setLocations(displayData);
+          currentTotalItems = displayData.length;
+          
+          if (finalData.length > 0 && !currentLoc.isManual) { 
+              try {
+                  const cacheToSave = {
+                      lat: currentLoc.lat, lon: currentLoc.lon,
+                      timestamp: new Date().getTime(),
+                      data: finalData
+                  };
+                  await AsyncStorage.setItem(`FEED_CACHE_${selectedCategory}`, JSON.stringify(cacheToSave));
+              } catch (e) {}
           }
       } else {
           setLocations(prev => {
               const existingIds = new Set(prev.map(item => item.id));
-              const uniqueNewData = newData.filter(item => !existingIds.has(item.id));
+              const uniqueNewData = displayData.filter(item => !existingIds.has(item.id));
+              currentTotalItems = prev.length + uniqueNewData.length;
               return [...prev, ...uniqueNewData];
           });
       }
       
       setPage(targetPage);
-      if (newData.length < ITEMS_PER_PAGE) setHasMore(false);
+      
+      // Chequeo de "Hay más en Google"
+      const googleHasMore = rawData.length >= ITEMS_PER_PAGE;
+      setHasMore(googleHasMore);
 
-    } catch (e) { console.error("Error fetching:", e); } 
-    finally { 
-        if (!isSilent) { setLoading(false); setRefreshing(false); setLoadingMore(false); } 
-    }
-  }, [activeLocation, selectedCategory, loadingMore, locations.length]);
+      // 🌪️ MODO ASPIRADORA (AUTO-RECARGA) 🌪️
+      // Si la lista total en pantalla es corta (< 15) Y Google dice que hay más páginas...
+      // ¡PEDIMOS LA SIGUIENTE INMEDIATAMENTE!
+      if (currentTotalItems < MIN_ITEMS_TO_FILL_SCREEN && googleHasMore) {
+          console.log("⚡ Pocos items... Aspirando siguiente página automáticamente.");
+          loadData(targetPage + 1, false, currentLoc, true, recursiveCount + 1);
+      } else {
+          setLoading(false);
+          setRefreshing(false);
+          setLoadingMore(false);
+      }
 
-  const handleScrollEnd = () => {
-      // Sin scroll infinito automático por ahora
+    } catch (e) { 
+        console.error("🔥 [FEED ERROR]:", e); 
+        if (targetPage === 1 && !loadedFromCache) setLocations([]); 
+        setLoading(false); setRefreshing(false); setLoadingMore(false);
+    } 
+  }, [activeLocation, selectedCategory, loadingMore, locations.length, hasMore]);
+
+  const handleLoadMore = () => {
+      if (hasMore && !loadingMore && !loading) {
+          loadData(page + 1);
+      }
   };
 
   const renderItem = useMemo(() => ({ item }) => {
       const fallbackImage = CATEGORY_DEFAULTS[item.category] || CATEGORY_DEFAULTS['Others'];
       const itemToRender = { ...item, image_url: item.image_url || fallbackImage };
-      return <StoryCard item={itemToRender} navigation={navigation} />;
+      
+      return (
+        <View style={{ marginBottom: 20 }}>
+            <View>
+                <StoryCard item={itemToRender} navigation={navigation} />
+                {item.source === 'db' && (
+                    <View style={localStyles.communityBadge}>
+                        <MaterialCommunityIcons name="crown" size={14} color="#000" style={{ marginRight: 4 }} />
+                        <Text style={localStyles.communityText}>COMMUNITY GEM</Text>
+                    </View>
+                )}
+            </View>
+        </View>
+      );
   }, [navigation, locations]);
 
   const getItemLayout = useCallback((data, index) => ({
@@ -318,9 +452,7 @@ const isLoggedIn = !!userInfo; // Si existe el objeto, asumimos login (mejora es
       if (loading && !refreshing) {
           return (
               <View style={{ paddingTop: HEADER_HEIGHT + 20 }}>
-                  <SkeletonCard />
-                  <SkeletonCard />
-                  <SkeletonCard />
+                  <SkeletonCard /><SkeletonCard /><SkeletonCard />
               </View>
           );
       }
@@ -329,7 +461,7 @@ const isLoggedIn = !!userInfo; // Si existe el objeto, asumimos login (mejora es
               <MaterialCommunityIcons name="map-search-outline" size={60} color={THEME.gold} style={{opacity: 0.5}}/>
               <Text style={{ color: THEME.subText, fontSize: 18, marginTop: 10 }}>Uncharted Territory</Text>
               <Text style={{ color: THEME.subText, fontSize: 12, marginTop: 5 }}>
-                 {activeLocation?.isManual ? `Search: ${activeLocation.label}` : "GPS Location"}
+                  {activeLocation?.isManual ? `No results for ${activeLocation.label}` : "Waiting for GPS..."}
               </Text>
           </View>
       );
@@ -348,15 +480,15 @@ const isLoggedIn = !!userInfo; // Si existe el objeto, asumimos login (mejora es
                         <Text style={localStyles.navTitle}>CastleApp</Text>
                     </TouchableOpacity>
                     <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TouchableOpacity onPress={() => navigation.navigate('MapScreen')} style={{ marginRight: 15 }}>
+                        <TouchableOpacity onPress={() => navigation.navigate('Map')} style={{ marginRight: 15 }}>
                             <Ionicons name="map" size={26} color={THEME.text} />
                         </TouchableOpacity>
                         <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
                             {isLoggedIn && userPhoto ? (
-    <Image source={{ uri: userPhoto }} style={localStyles.avatarSmall} />
-) : (
-    <Ionicons name="menu" size={30} color={THEME.gold} />
-)}
+                                <Image source={{ uri: userPhoto }} style={localStyles.avatarSmall} />
+                            ) : (
+                                <Ionicons name="menu" size={30} color={THEME.gold} />
+                            )}
                         </TouchableOpacity>
                     </View>
                 </View>
@@ -380,7 +512,15 @@ const isLoggedIn = !!userInfo; // Si existe el objeto, asumimos login (mejora es
                             data={categories} horizontal showsHorizontalScrollIndicator={false}
                             contentContainerStyle={{ paddingHorizontal: 5 }}
                             renderItem={({item}) => (
-                                <TouchableOpacity onPress={() => setSelectedCategory(item)} style={[localStyles.catBtn, selectedCategory === item && localStyles.catBtnActive]}>
+                                <TouchableOpacity 
+                                    onPress={() => {
+                                        if (selectedCategory === item) return;
+                                        setLocations([]); 
+                                        setLoading(true);
+                                        setSelectedCategory(item);
+                                    }} 
+                                    style={[localStyles.catBtn, selectedCategory === item && localStyles.catBtnActive]}
+                                >
                                     <Text style={[localStyles.catText, selectedCategory === item && localStyles.catTextActive]}>{item}</Text>
                                 </TouchableOpacity>
                             )}
@@ -390,25 +530,19 @@ const isLoggedIn = !!userInfo; // Si existe el objeto, asumimos login (mejora es
             </View> 
           </ImageBackground>
           
-          {/* --- MENU DROPDOWN --- */}
           {menuVisible && (
               <View style={localStyles.dropdownMenu}>
                   <View style={localStyles.arrowUp} />
-                  
-                  <View style={localStyles.menuHeader}>
+                  <TouchableOpacity style={localStyles.menuHeader} activeOpacity={0.7} onPress={() => { setMenuVisible(false); navigation.navigate('ProfileScreen'); }}>
                       {isLoggedIn && userPhoto ? (
                           <Image source={{ uri: userPhoto }} style={localStyles.avatarLarge} />
                       ) : (
-                          <View style={localStyles.avatarPlaceholder}>
-                              <Ionicons name="person" size={28} color={THEME.bg} />
-                          </View>
+                          <View style={localStyles.avatarPlaceholder}><Ionicons name="person" size={28} color={THEME.bg} /></View>
                       )}
-                      
                       <Text style={localStyles.menuUserLabel}>{isLoggedIn ? 'Explorer Rank' : 'Guest Mode'}</Text>
-                      <Text style={localStyles.menuUserName} numberOfLines={1}>
-                          {isLoggedIn ? userName : 'Guest User'}
-                      </Text>
-                  </View>
+                      <Text style={localStyles.menuUserName} numberOfLines={1}>{isLoggedIn ? userName : 'Guest User'}</Text>
+                      <Text style={{ color: THEME.gold, fontSize: 14, marginTop: 4 }}>View Profile <Ionicons name="chevron-forward" size={14} /></Text>
+                  </TouchableOpacity>
 
                   <View style={localStyles.separator} />
                   
@@ -418,10 +552,6 @@ const isLoggedIn = !!userInfo; // Si existe el objeto, asumimos login (mejora es
                             <Ionicons name="heart" size={20} color={THEME.gold} />
                             <Text style={localStyles.menuItemText}>My Favorites</Text>
                         </TouchableOpacity>
-                        <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('HistoryMap'); }}>
-                            <MaterialCommunityIcons name="sword-cross" size={20} color={THEME.gold} />
-                            <Text style={localStyles.menuItemText}>My Conquests</Text>
-                        </TouchableOpacity>
                         <View style={localStyles.separator} />
                         <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); logout(); }}>
                             <Ionicons name="log-out" size={20} color={THEME.danger} />
@@ -429,17 +559,9 @@ const isLoggedIn = !!userInfo; // Si existe el objeto, asumimos login (mejora es
                         </TouchableOpacity>
                     </>
                   ) : (
-                    <TouchableOpacity 
-                        style={localStyles.menuItem} 
-                        onPress={() => { 
-                            setMenuVisible(false); 
-                            navigation.navigate('LoginScreen'); 
-                        }}
-                    >
+                    <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('LoginScreen'); }}>
                         <Ionicons name="log-in" size={20} color={THEME.gold} />
-                        <Text style={[localStyles.menuItemText, { color: THEME.gold, fontWeight: 'bold' }]}>
-                            Sign In / Register
-                        </Text>
+                        <Text style={[localStyles.menuItemText, { color: THEME.gold, fontWeight: 'bold' }]}>Sign In / Register</Text>
                     </TouchableOpacity>
                   )}
               </View>
@@ -454,8 +576,8 @@ const isLoggedIn = !!userInfo; // Si existe el objeto, asumimos login (mejora es
                   renderItem={renderItem}
                   keyExtractor={(item) => item.id.toString()}
                   getItemLayout={getItemLayout}
-                  onMomentumScrollEnd={handleScrollEnd}
-                  onScrollEndDrag={handleScrollEnd}
+                  onMomentumScrollEnd={() => {}}
+                  onScrollEndDrag={() => {}}
                   initialNumToRender={4}    
                   maxToRenderPerBatch={5}   
                   windowSize={5}            
@@ -464,8 +586,8 @@ const isLoggedIn = !!userInfo; // Si existe el objeto, asumimos login (mejora es
                   onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: true })}
                   contentContainerStyle={{ paddingTop: HEADER_HEIGHT + 20, paddingBottom: 40 }}
                   progressViewOffset={HEADER_HEIGHT + 20}
-                  onEndReached={() => { if (hasMore && !loadingMore) loadData(page + 1); }}
-                  onEndReachedThreshold={0.5}
+                  onEndReached={handleLoadMore} 
+                  onEndReachedThreshold={0.8} 
                   refreshControl={
                       <RefreshControl refreshing={refreshing} onRefresh={() => loadData(1, true)} colors={[THEME.bg]} tintColor={THEME.gold} progressViewOffset={HEADER_HEIGHT + 20} />
                   }
@@ -481,7 +603,7 @@ const localStyles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: THEME.bg },
   animatedHeaderContainer: { position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_HEIGHT, zIndex: 1000, backgroundColor: THEME.bg, borderBottomWidth: 1, borderBottomColor: '#333' },
   headerBackground: { width: '100%', height: '100%', backgroundColor: THEME.bg },
-  headerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', paddingTop: Platform.OS === 'ios' ? 50 : 40, paddingHorizontal: 20, justifyContent: 'flex-start' },
+  headerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', paddingTop: Platform.OS === 'ios' ? 60 : 60, paddingHorizontal: 20, justifyContent: 'flex-start' },
   navTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   logoRow: { flexDirection: 'row', alignItems: 'center' },
   navTitle: { fontSize: 22, fontWeight: 'bold', color: THEME.text, marginLeft: 8 },
@@ -504,4 +626,27 @@ const localStyles = StyleSheet.create({
   separator: { height: 1, backgroundColor: '#333', marginVertical: 10 },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
   menuItemText: { color: THEME.text, marginLeft: 12, fontSize: 15 },
+  communityBadge: {
+    position: 'absolute',
+    top: 15,
+    right: 30, 
+    backgroundColor: THEME.gold,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 3.84,
+    elevation: 5,
+    zIndex: 10
+  },
+  communityText: {
+      color: '#000',
+      fontWeight: 'bold',
+      fontSize: 10,
+      letterSpacing: 0.5
+  }
 });

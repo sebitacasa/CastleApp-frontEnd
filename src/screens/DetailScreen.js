@@ -18,6 +18,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import axios from "axios"
+import { AuthContext } from '../context/AuthContext';
 
 import { FavoritesContext } from '../context/FavoritesContext';
 
@@ -76,8 +77,17 @@ export default function DetailScreen({ route, navigation }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [fullDescription, setFullDescription] = useState(null); 
   const [loadingDesc, setLoadingDesc] = useState(false);     
+  const { userInfo } = useContext(AuthContext);
 
-  const handleToggleFav = () => {
+ const handleToggleFav = () => {
+    // A. Verificamos si es un usuario invitado o no logueado
+    if (!userInfo || (typeof userInfo === 'object' && Object.keys(userInfo).length === 0)) {
+        // Si no hay usuario, lo mandamos al Login
+        navigation.navigate('LoginScreen'); 
+        return; 
+    }
+
+    // B. Si está registrado, permitimos el like
     toggleFavorite(locationData);
   };
 
@@ -89,7 +99,7 @@ export default function DetailScreen({ route, navigation }) {
 const handleReadMore = async () => {
   try {
     setLoadingDesc(true);
-    const response = await axios.get(`${API_BASE}/api/wiki-details`, {
+    const response = await axios.get(`${API_BASE}/api/external/wiki`, {
       params: { title: locationData.wiki_title }
     });
 

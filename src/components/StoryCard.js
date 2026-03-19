@@ -31,14 +31,20 @@ const StoryCard = memo(({ item, navigation }) => {
   const isFav = isFavorite(item.id);
 
   // --- 2. LÓGICA DE URL DE IMAGEN ---
-  const finalUrl = useMemo(() => {
-    let rawUrl = item.images?.[0] || item.image_url;
-    if (!rawUrl) return null; 
-    let processed = String(rawUrl).trim().replace(/["{}]/g, "");
-    const cacheBuster = `&t=${new Date().getTime()}`; 
-    return `${API_BASE}/api/image-proxy?url=${encodeURIComponent(processed)}${cacheBuster}`;
-  }, [item.id, item.image_url, item.images]);
+// ✅ SOLUCIÓN: Usar la URL directa
+const finalUrl = useMemo(() => {
+    // 1. Obtenemos la URL (tu backend devuelve 'image_url')
+    let rawUrl = item.image_url || item.images?.[0];
 
+    // 2. Si no hay URL, devolvemos null (se mostrará el placeholder)
+    if (!rawUrl) return null;
+
+    // 3. Limpieza básica por si viene con comillas extrañas de la DB
+    let processed = String(rawUrl).trim().replace(/["{}]/g, "");
+
+    // 4. Devolvemos la URL tal cual (Google/Wiki/Unsplash ya son accesibles)
+    return processed;
+}, [item.image_url, item.images]);
   const handlePress = () => {
     navigation.navigate('Detail', { locationData: item });
   };
