@@ -32,11 +32,15 @@ const CategoryMarker = ({ loc, onPress }) => {
       onPress={onPress}
     >
       <View style={styles.iconMarkerContainer}>
+        {/* Orden de JSX = orden de pintado (sin depender de zIndex, que
+            react-native-maps no siempre respeta bien en la captura del
+            marcador en Android): sombra, después flecha, badge al final
+            para que quede arriba de todo y no se "muerda" con la flecha. */}
+        <View style={styles.markerShadow} />
+        <View style={[styles.markerArrow, { borderTopColor: color }]} />
         <View style={[styles.iconBadge, { backgroundColor: color }]}>
           <MaterialCommunityIcons name={icon} size={22} color="#fff" />
         </View>
-        <View style={[styles.markerArrow, { borderTopColor: color }]} />
-        <View style={styles.markerShadow} />
       </View>
     </Marker>
   );
@@ -235,9 +239,13 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  iconMarkerContainer: { width: 60, height: 60, alignItems: 'center', justifyContent: 'flex-start' },
-  iconBadge: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', zIndex: 3, elevation: 4 },
-  markerArrow: { width: 0, height: 0, borderStyle: 'solid', borderLeftWidth: 9, borderRightWidth: 9, borderTopWidth: 12, borderLeftColor: 'transparent', borderRightColor: 'transparent', marginTop: -4, zIndex: 2 },
+  // Todo con position:'absolute' + top -- así el orden de pintado lo decide
+  // el orden de JSX (último = arriba de todo), sin depender de zIndex, que
+  // react-native-maps no siempre respeta bien al rasterizar el marcador en
+  // Android (la flecha se pintaba encima del círculo y lo "mordía").
+  iconMarkerContainer: { width: 60, height: 60, alignItems: 'center' },
+  iconBadge: { position: 'absolute', top: 0, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', elevation: 4 },
+  markerArrow: { position: 'absolute', top: 36, width: 0, height: 0, borderStyle: 'solid', borderLeftWidth: 9, borderRightWidth: 9, borderTopWidth: 12, borderLeftColor: 'transparent', borderRightColor: 'transparent' },
   markerShadow: { position: 'absolute', bottom: 8, width: 24, height: 7, backgroundColor: 'black', opacity: 0.3, borderRadius: 10, transform: [{ scaleX: 1.5 }] },
 
   container: {
