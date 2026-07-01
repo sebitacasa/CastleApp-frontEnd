@@ -13,14 +13,19 @@ import {
   Modal,
   ActivityIndicator,
   StyleSheet,
-  Dimensions
+  Dimensions,
+  TextInput,
+  KeyboardAvoidingView
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import axios from "axios";
+import * as ImagePicker from 'expo-image-picker';
 
 import { AuthContext } from '../context/AuthContext';
 import { FavoritesContext } from '../context/FavoritesContext';
+import { uploadImageToCloudinary } from '../utils/cloudinaryUpload';
+import { submitContribution, getContributionForPlace, getMyContribution } from '../api/contributionsApi';
 
 import { APP_PALETTE as THEME } from '../theme/colors';
 
@@ -49,14 +54,22 @@ export default function DetailScreen({ route, navigation }) {
   const [fullDescription, setFullDescription] = useState(null); 
   const [loadingDesc, setLoadingDesc] = useState(false);     
   // 💡 NUEVO ESTADO: Saber si Wikipedia falló en segundo plano
-  const [wikiFailed, setWikiFailed] = useState(false); 
+  const [wikiFailed, setWikiFailed] = useState(false);
 
-  const { userInfo } = useContext(AuthContext);
+  const { userInfo, userToken } = useContext(AuthContext);
+  const isLoggedIn = !!(userInfo && (typeof userInfo !== 'object' || Object.keys(userInfo).length > 0));
+
+  // 💡 APORTES DE LA COMUNIDAD (foto + info del lugar, pendientes de aprobación)
+  const [communityContribution, setCommunityContribution] = useState(null); // el aprobado, visible para todos
+  const [myContribution, setMyContribution] = useState(null); // el propio, aprobado o no
+  const [infoModalVisible, setInfoModalVisible] = useState(false);
+  const [infoTextInput, setInfoTextInput] = useState('');
+  const [submittingContribution, setSubmittingContribution] = useState(false);
 
   const handleToggleFav = () => {
-    if (!userInfo || (typeof userInfo === 'object' && Object.keys(userInfo).length === 0)) {
-        navigation.navigate('LoginScreen'); 
-        return; 
+    if (!isLoggedIn) {
+        navigation.navigate('LoginScreen');
+        return;
     }
     toggleFavorite(locationData);
   };
@@ -159,6 +172,80 @@ export default function DetailScreen({ route, navigation }) {
       }
   }, [locationData]);
 
+  // 💡 APORTES DE LA COMUNIDAD: identificamos el lugar por google_place_id
+  // (lugares de Google, la mayoría de los pines) o por location_id (lugares
+  // de la comunidad, que sí tienen fila en historical_locations).
+  const placeRef = locationData.source === 'google'
+      ? { google_place_id: locationData.google_place_id }
+      : { location_id: locationData.id };
+
+  useEffect(() => {
+      const placeIdentifier = placeRef.google_place_id || placeRef.location_id;
+      if (!placeIdentifier) return;
+
+      getContributionForPlace(placeRef).then(setCommunityContribution);
+      if (isLoggedIn && userToken) {
+          getMyContribution(placeRef, userToken).then(setMyContribution);
+      }
+  }, [locationData, userToken]);
+
+  const pickContributionPhoto = async () => {
+    if (!isLoggedIn) {
+        navigation.navigate('LoginScreen');
+        return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [4, 3],
+      quality: 0.7,
+    });
+    if (result.canceled) return;
+
+    setSubmittingContribution(true);
+    try {
+        const cloudUrl = await uploadImageToCloudinary(result.assets[0].uri);
+        if (!cloudUrl) {
+            Alert.alert("Upload Error", "No se pudo subir la foto. Probá de nuevo.");
+            return;
+        }
+        const { contribution } = await submitContribution(placeRef, { photo_url: cloudUrl }, userToken);
+        setMyContribution(contribution);
+        Alert.alert("¡Listo!", "Tu foto fue enviada y va a mostrarse apenas se apruebe.");
+    } catch (error) {
+        Alert.alert("Error", error.response?.data?.error || "No se pudo enviar la foto.");
+    } finally {
+        setSubmittingContribution(false);
+    }
+  };
+
+  const openAddInfoModal = () => {
+    if (!isLoggedIn) {
+        navigation.navigate('LoginScreen');
+        return;
+    }
+    setInfoTextInput('');
+    setInfoModalVisible(true);
+  };
+
+  const submitInfoText = async () => {
+    if (infoTextInput.trim().length < 5) {
+        Alert.alert("Muy corto", "Contanos un poco más sobre el lugar.");
+        return;
+    }
+    setSubmittingContribution(true);
+    try {
+        const { contribution } = await submitContribution(placeRef, { info_text: infoTextInput.trim() }, userToken);
+        setMyContribution(contribution);
+        setInfoModalVisible(false);
+        Alert.alert("¡Listo!", "Tu aporte fue enviado y va a mostrarse apenas se apruebe.");
+    } catch (error) {
+        Alert.alert("Error", error.response?.data?.error || "No se pudo enviar la info.");
+    } finally {
+        setSubmittingContribution(false);
+    }
+  };
+
   // 💡 LÓGICA DE DESCRIPCIÓN INTELIGENTE
   const renderDescription = () => {
       const fallbackText = locationData.description || "No further details available for this location.";
@@ -226,6 +313,79 @@ export default function DetailScreen({ route, navigation }) {
                       </Text>
                   </View>
               )}
+          </View>
+      );
+  };
+
+  // 💡 SECCIÓN DE APORTES DE LA COMUNIDAD (foto + info, solo si no hay Wikipedia)
+  const noWikiData = !fullDescription && wikiFailed;
+  const hasApprovedPhoto = !!communityContribution?.photo_url;
+  const hasApprovedInfo = !!communityContribution?.info_text;
+  const myPendingContribution = myContribution && !myContribution.is_approved ? myContribution : null;
+
+  const renderCommunitySection = () => {
+      // Los botones se muestran siempre (mismo patrón que el corazón de
+      // favoritos): si el usuario no está logeado, tocarlos lo manda a Login
+      // en vez de ocultarlos directamente.
+      const showAddPhotoButton = !hasApprovedPhoto;
+      const showAddInfoButton = noWikiData && !hasApprovedInfo;
+
+      return (
+          <View style={{ marginTop: 10 }}>
+              <View style={styles.sectionHeader}>
+                  <Ionicons name="people" size={20} color={THEME.gold} />
+                  <Text style={styles.sectionTitle}>Community</Text>
+              </View>
+
+              {hasApprovedPhoto && (
+                  <Image
+                      source={{ uri: getProcessedUrl(communityContribution.photo_url) }}
+                      style={styles.communityPhoto}
+                      resizeMode="cover"
+                  />
+              )}
+
+              {hasApprovedInfo && (
+                  <Text style={[styles.description, { marginTop: hasApprovedPhoto ? 12 : 0, marginBottom: 12 }]}>
+                      {communityContribution.info_text}
+                  </Text>
+              )}
+
+              {myPendingContribution && (
+                  <View style={styles.pendingBadge}>
+                      <Ionicons name="time-outline" size={14} color={THEME.subText} />
+                      <Text style={styles.pendingText}>Your contribution is pending review</Text>
+                  </View>
+              )}
+
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginTop: 12 }}>
+                  {showAddPhotoButton && (
+                      <TouchableOpacity
+                          style={styles.communityActionButton}
+                          onPress={pickContributionPhoto}
+                          disabled={submittingContribution}
+                      >
+                          {submittingContribution ? (
+                              <ActivityIndicator size="small" color={THEME.gold} />
+                          ) : (
+                              <>
+                                  <Ionicons name="camera-outline" size={16} color={THEME.gold} />
+                                  <Text style={styles.communityActionText}>Add a photo</Text>
+                              </>
+                          )}
+                      </TouchableOpacity>
+                  )}
+                  {showAddInfoButton && (
+                      <TouchableOpacity
+                          style={[styles.communityActionButton, { marginLeft: 10 }]}
+                          onPress={openAddInfoModal}
+                          disabled={submittingContribution}
+                      >
+                          <Ionicons name="create-outline" size={16} color={THEME.gold} />
+                          <Text style={styles.communityActionText}>Add info</Text>
+                      </TouchableOpacity>
+                  )}
+              </View>
           </View>
       );
   };
@@ -354,8 +514,48 @@ export default function DetailScreen({ route, navigation }) {
           
           {renderDescription()}
 
+          <View style={styles.divider} />
+
+          {renderCommunitySection()}
+
         </View>
       </ScrollView>
+
+      <Modal
+        visible={infoModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setInfoModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.infoModalOverlay}
+        >
+          <View style={styles.infoModalCard}>
+            <Text style={styles.sectionTitle}>Add info about this place</Text>
+            <TextInput
+              style={styles.infoModalInput}
+              placeholder="What do you know about this place?"
+              placeholderTextColor={THEME.subText}
+              multiline
+              value={infoTextInput}
+              onChangeText={setInfoTextInput}
+            />
+            <View style={{ flexDirection: 'row', justifyContent: 'flex-end', marginTop: 15 }}>
+              <TouchableOpacity onPress={() => setInfoModalVisible(false)} style={{ marginRight: 20 }}>
+                <Text style={{ color: THEME.subText, fontWeight: 'bold' }}>CANCEL</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={submitInfoText} disabled={submittingContribution}>
+                {submittingContribution ? (
+                  <ActivityIndicator size="small" color={THEME.gold} />
+                ) : (
+                  <Text style={{ color: THEME.gold, fontWeight: 'bold' }}>SUBMIT</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <Modal
         visible={isFullScreenVisible}
@@ -574,6 +774,67 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 14,
     letterSpacing: 1,
+  },
+
+  communityPhoto: {
+    width: '100%',
+    height: 180,
+    borderRadius: 16,
+  },
+  pendingBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 12,
+    backgroundColor: THEME.card,
+    borderWidth: 1,
+    borderColor: THEME.border,
+    borderRadius: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+  },
+  pendingText: {
+    color: THEME.subText,
+    fontSize: 13,
+    marginLeft: 6,
+  },
+  communityActionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: THEME.gold,
+    borderRadius: 20,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
+    marginBottom: 10,
+  },
+  communityActionText: {
+    color: THEME.gold,
+    fontWeight: 'bold',
+    fontSize: 13,
+    marginLeft: 6,
+  },
+
+  infoModalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  infoModalCard: {
+    backgroundColor: THEME.bg,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+  },
+  infoModalInput: {
+    borderWidth: 1,
+    borderColor: THEME.border,
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    color: THEME.text,
+    fontSize: 15,
   },
 
   fullScreenContainer: {

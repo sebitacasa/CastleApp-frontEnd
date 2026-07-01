@@ -10,12 +10,10 @@ import * as ImagePicker from 'expo-image-picker';
 
 import { suggestLocation, getLocations } from '../api/locationsApi';
 import { AuthContext } from '../context/AuthContext';
+import { uploadImageToCloudinary } from '../utils/cloudinaryUpload';
 
 // 👇 IMPORTAMOS TU PALETA GLOBAL
 import { APP_PALETTE as THEME } from '../theme/colors';
-
-const CLOUD_NAME = "dq4j7zh2a"; 
-const UPLOAD_PRESET = "castleapp_upload"; 
 
 const SELECTABLE_CATEGORIES = [
   'Castles', 'Museums', 'Historic Site', 'Ruins', 'Religious', 'Others'
@@ -109,29 +107,6 @@ const SearchScreen = ({ navigation }) => {
     setModalVisible(true);
   };
 
-  const uploadToCloudinary = async (imageUri) => {
-    if (!imageUri) return null;
-    const data = new FormData();
-    let filename = imageUri.split('/').pop();
-    let match = /\.(\w+)$/.exec(filename);
-    let type = match ? `image/${match[1]}` : `image`;
-
-    data.append('file', { uri: imageUri, name: filename, type });
-    data.append('upload_preset', UPLOAD_PRESET);
-
-    try {
-        const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/image/upload`, {
-            method: 'POST',
-            body: data
-        });
-        const result = await res.json();
-        return result.secure_url || null;
-    } catch (error) {
-        console.error("Upload failed:", error);
-        return null;
-    }
-  };
-
   const handleSubmit = async () => {
     if (formData.name.length < 3 || formData.description.length < 5) {
         Alert.alert("Incomplete", "Please fill name and description.");
@@ -148,7 +123,7 @@ const SearchScreen = ({ navigation }) => {
     const userId = userInfo?.id || userInfo?.user?.id;
 
     try {
-      const cloudImageUrl = await uploadToCloudinary(formData.imageUri);
+      const cloudImageUrl = await uploadImageToCloudinary(formData.imageUri);
 
       if (!cloudImageUrl) {
           Alert.alert("Upload Error", "Failed to upload image. Try again.");

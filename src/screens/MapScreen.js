@@ -3,15 +3,46 @@ import {
   View, Text, TouchableOpacity, Image, ActivityIndicator, Alert, StyleSheet, Dimensions, Platform
 } from 'react-native';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import * as Location from 'expo-location'; 
+import * as Location from 'expo-location';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
 // 👇 IMPORTAMOS LA PALETA GLOBAL
 import { APP_PALETTE as THEME } from '../theme/colors';
 import { getMapLocations } from '../api/locationsApi.js';
+import { getCategoryIcon } from '../utils/categoryIcons';
 
 const { width } = Dimensions.get('window');
+
+// 👇 MARCADOR CON ÍCONO SEGÚN CATEGORÍA (mismo patrón que ConquestIconMarker
+// en HistoryMapScreen.js: badge circular + flecha + sombra).
+const CategoryMarker = ({ loc, onPress }) => {
+  const [tracksViewChanges, setTracksViewChanges] = useState(true);
+  const { icon, color } = getCategoryIcon(loc.category);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTracksViewChanges(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  return (
+    <Marker
+      coordinate={{ latitude: loc.latitude, longitude: loc.longitude }}
+      centerOffset={{ x: 0, y: -28 }}
+      tracksViewChanges={tracksViewChanges}
+      title={loc.name}
+      onPress={onPress}
+    >
+      <View style={styles.iconMarkerContainer}>
+        <View style={[styles.iconBadge, { backgroundColor: color }]}>
+          <MaterialCommunityIcons name={icon} size={22} color="#fff" />
+        </View>
+        <View style={[styles.markerArrow, { borderTopColor: color }]} />
+        <View style={styles.markerShadow} />
+      </View>
+    </Marker>
+  );
+};
 
 export default function MapScreen() {
   const mapRef = useRef(null);
@@ -156,11 +187,9 @@ export default function MapScreen() {
         onRegionChangeComplete={onRegionChangeComplete}
       >
         {locations.map((loc, index) => (
-          <Marker
+          <CategoryMarker
             key={`${loc.id}-${index}`}
-            coordinate={{ latitude: loc.latitude, longitude: loc.longitude }}
-            pinColor={ loc.category === 'Museums' ? 'blue' : 'red' }
-            title={loc.name}
+            loc={loc}
             onPress={() => onMarkerPress(loc)}
           />
         ))}
@@ -208,6 +237,11 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
+  iconMarkerContainer: { width: 60, height: 60, alignItems: 'center', justifyContent: 'flex-start' },
+  iconBadge: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', zIndex: 3, elevation: 4 },
+  markerArrow: { width: 0, height: 0, borderStyle: 'solid', borderLeftWidth: 9, borderRightWidth: 9, borderTopWidth: 12, borderLeftColor: 'transparent', borderRightColor: 'transparent', marginTop: -4, zIndex: 2 },
+  markerShadow: { position: 'absolute', bottom: 8, width: 24, height: 7, backgroundColor: 'black', opacity: 0.3, borderRadius: 10, transform: [{ scaleX: 1.5 }] },
+
   container: {
     flex: 1,
     backgroundColor: THEME.bg,
