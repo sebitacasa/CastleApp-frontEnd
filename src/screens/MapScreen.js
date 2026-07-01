@@ -16,20 +16,18 @@ const { width } = Dimensions.get('window');
 
 // 👇 MARCADOR CON ÍCONO SEGÚN CATEGORÍA (mismo patrón que ConquestIconMarker
 // en HistoryMapScreen.js: badge circular + flecha + sombra).
+// tracksViewChanges se deja siempre en true: apagarlo con un timeout (como
+// en HistoryMapScreen) puede "congelar" el marcador a mitad de pintar el
+// ícono de la fuente vectorial en Android, mostrando el badge cortado o
+// deforme. Con pocas decenas de pines el costo de performance es aceptable.
 const CategoryMarker = ({ loc, onPress }) => {
-  const [tracksViewChanges, setTracksViewChanges] = useState(true);
   const { icon, color } = getCategoryIcon(loc.category);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setTracksViewChanges(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <Marker
       coordinate={{ latitude: loc.latitude, longitude: loc.longitude }}
       centerOffset={{ x: 0, y: -28 }}
-      tracksViewChanges={tracksViewChanges}
+      tracksViewChanges={true}
       title={loc.name}
       onPress={onPress}
     >
