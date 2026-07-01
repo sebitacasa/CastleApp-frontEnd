@@ -2,7 +2,7 @@ import 'dotenv/config';
 
 export default {
   "expo": {
-    "name": "CastleApp",
+    "name": "Echoes&Paths",
     "slug": "castleapp-dev",
     "owner": "sebita1495",
     "scheme": "castleapp-dev",

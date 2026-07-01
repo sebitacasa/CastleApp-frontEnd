@@ -94,7 +94,7 @@ const LoginScreen = ({ navigation }) => {
             size={80}
             color={THEME.gold}
           />
-          <Text style={styles.title}>CastleApp</Text>
+          <Text style={styles.title}>Echoes&Paths</Text>
           <Text style={styles.subtitle}>Unlock the secrets of history</Text>
         </View>
 

@@ -440,7 +440,7 @@ export default function FeedScreen() {
               <View style={localStyles.navTopRow}>
                   <TouchableOpacity style={localStyles.logoRow} onPress={clearSearch} activeOpacity={0.7} disabled={loading}>
                       <MaterialCommunityIcons name="compass-outline" size={28} color={THEME.gold} />
-                      <Text style={localStyles.navTitle}>CastleApp</Text>
+                      <Text style={localStyles.navTitle}>Echoes&Paths</Text>
                   </TouchableOpacity>
                   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                      <TouchableOpacity 

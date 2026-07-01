@@ -11,12 +11,12 @@ export default function Footer() {
       {/* Icono decorativo con un azul más claro para resaltar */}
       <MaterialCommunityIcons name="bank" size={32} color="#4DA8DA" style={{ marginBottom: 10 }} />
       
-      <Text style={styles.title}>CastleApp</Text>
+      <Text style={styles.title}>Echoes&Paths</Text>
       <Text style={styles.subtitle}>Discovering the past, one place at a time.</Text>
-      
+
       <View style={styles.divider} />
-      
-      <Text style={styles.copyright}>© {currentYear} CastleApp. All rights reserved.</Text>
+
+      <Text style={styles.copyright}>© {currentYear} Echoes&Paths. All rights reserved.</Text>
     </View>
   );
 }
