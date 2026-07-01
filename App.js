@@ -7,6 +7,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import * as SplashScreen from 'expo-splash-screen';
+import { useFonts, BerkshireSwash_400Regular } from '@expo-google-fonts/berkshire-swash';
 
 import { AuthProvider, AuthContext } from './src/context/AuthContext';
 import { FavoritesProvider } from './src/context/FavoritesContext';
@@ -128,6 +129,7 @@ const MainTabs = ({ navigation }) => {
 const AppNavigation = () => {
   const { isLoading } = useContext(AuthContext);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const [fontsLoaded] = useFonts({ BerkshireSwash_400Regular });
 
   useEffect(() => {
     // 💡 El splash nativo ya muestra la misma brújula sobre el mismo fondo,
@@ -137,7 +139,7 @@ const AppNavigation = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  if (isLoading || !minTimeElapsed) {
+  if (isLoading || !minTimeElapsed || !fontsLoaded) {
     return <AnimatedSplash />;
   }
 

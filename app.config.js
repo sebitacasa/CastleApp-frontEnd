@@ -34,6 +34,7 @@ export default {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
+      "expo-font",
       "expo-web-browser",
       "@react-native-google-signin/google-signin",
       [

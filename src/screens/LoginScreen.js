@@ -8,7 +8,6 @@ import {
   Alert,
   ImageBackground,
   StatusBar,
-  Platform,
 } from "react-native";
 import { MaterialCommunityIcons, Ionicons } from "@expo/vector-icons";
 import {
@@ -159,10 +158,9 @@ const styles = StyleSheet.create({
     marginTop: 50,
   },
   title: {
-    fontSize: 42,
-    fontWeight: "bold",
+    fontSize: 48,
     color: THEME.text, // 💡 Tinta sepia oscura
-    fontFamily: Platform.OS === "ios" ? "Didot" : "serif",
+    fontFamily: "BerkshireSwash_400Regular",
     marginTop: 10,
   },
   subtitle: {

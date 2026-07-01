@@ -20,8 +20,8 @@ export default StyleSheet.create({
   // El resto se mantiene igual o con ajustes mínimos
   title: {
     color: '#000000',
-    fontSize: 18, // Un poco más discreto
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontFamily: 'BerkshireSwash_400Regular',
     letterSpacing: 0.5,
     marginBottom: 4,
   },

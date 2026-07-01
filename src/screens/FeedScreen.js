@@ -592,7 +592,7 @@ const localStyles = StyleSheet.create({
   headerContent: { flex: 1, paddingTop: Platform.OS === 'ios' ? 60 : 60, paddingHorizontal: 20, justifyContent: 'flex-start' },
   navTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   logoRow: { flexDirection: 'row', alignItems: 'center' },
-  navTitle: { fontSize: 22, fontWeight: 'bold', color: THEME.text, marginLeft: 8 },
+  navTitle: { fontSize: 24, fontFamily: 'BerkshireSwash_400Regular', color: THEME.text, marginLeft: 8 },
   avatarSmall: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: THEME.gold },
   locationBadge: { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', backgroundColor: THEME.card, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: THEME.border },
   locationText: { color: THEME.gold, fontWeight: 'bold', fontSize: 14, marginLeft: 6, maxWidth: 200 },
