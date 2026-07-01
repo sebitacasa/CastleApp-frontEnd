@@ -5,46 +5,28 @@ import {
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import * as Location from 'expo-location';
 import { useNavigation, useRoute } from '@react-navigation/native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 
 // 👇 IMPORTAMOS LA PALETA GLOBAL
 import { APP_PALETTE as THEME } from '../theme/colors';
 import { getMapLocations } from '../api/locationsApi.js';
-import { getCategoryIcon } from '../utils/categoryIcons';
+import { getCategoryColor } from '../utils/categoryIcons';
 
 const { width } = Dimensions.get('window');
 
-// 👇 MARCADOR CON ÍCONO SEGÚN CATEGORÍA (mismo patrón que ConquestIconMarker
-// en HistoryMapScreen.js: badge circular + flecha + sombra).
-// tracksViewChanges se deja siempre en true: apagarlo con un timeout (como
-// en HistoryMapScreen) puede "congelar" el marcador a mitad de pintar el
-// ícono de la fuente vectorial en Android, mostrando el badge cortado o
-// deforme. Con pocas decenas de pines el costo de performance es aceptable.
-const CategoryMarker = ({ loc, onPress }) => {
-  const { icon, color } = getCategoryIcon(loc.category);
-
-  return (
-    <Marker
-      coordinate={{ latitude: loc.latitude, longitude: loc.longitude }}
-      centerOffset={{ x: 0, y: -28 }}
-      tracksViewChanges={true}
-      title={loc.name}
-      onPress={onPress}
-    >
-      <View style={styles.iconMarkerContainer}>
-        {/* Orden de JSX = orden de pintado (sin depender de zIndex, que
-            react-native-maps no siempre respeta bien en la captura del
-            marcador en Android): sombra, después flecha, badge al final
-            para que quede arriba de todo y no se "muerda" con la flecha. */}
-        <View style={styles.markerShadow} />
-        <View style={[styles.markerArrow, { borderTopColor: color }]} />
-        <View style={[styles.iconBadge, { backgroundColor: color }]}>
-          <MaterialCommunityIcons name={icon} size={22} color="#fff" />
-        </View>
-      </View>
-    </Marker>
-  );
-};
+// 👇 MARCADOR CON EL PIN ESTÁNDAR DE Google Maps, solo cambiando el color
+// según la categoría. El marcador con ícono custom (badge + flecha) daba
+// problemas de renderizado en Android que no se pudieron resolver de forma
+// confiable, así que se vuelve al pin nativo (pinColor), que no depende de
+// snapshots ni de fuentes vectoriales.
+const CategoryMarker = ({ loc, onPress }) => (
+  <Marker
+    coordinate={{ latitude: loc.latitude, longitude: loc.longitude }}
+    pinColor={getCategoryColor(loc.category)}
+    title={loc.name}
+    onPress={onPress}
+  />
+);
 
 export default function MapScreen() {
   const mapRef = useRef(null);
@@ -239,15 +221,6 @@ export default function MapScreen() {
 }
 
 const styles = StyleSheet.create({
-  // Todo con position:'absolute' + top -- así el orden de pintado lo decide
-  // el orden de JSX (último = arriba de todo), sin depender de zIndex, que
-  // react-native-maps no siempre respeta bien al rasterizar el marcador en
-  // Android (la flecha se pintaba encima del círculo y lo "mordía").
-  iconMarkerContainer: { width: 60, height: 60, alignItems: 'center' },
-  iconBadge: { position: 'absolute', top: 0, width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', elevation: 4 },
-  markerArrow: { position: 'absolute', top: 36, width: 0, height: 0, borderStyle: 'solid', borderLeftWidth: 9, borderRightWidth: 9, borderTopWidth: 12, borderLeftColor: 'transparent', borderRightColor: 'transparent' },
-  markerShadow: { position: 'absolute', bottom: 8, width: 24, height: 7, backgroundColor: 'black', opacity: 0.3, borderRadius: 10, transform: [{ scaleX: 1.5 }] },
-
   container: {
     flex: 1,
     backgroundColor: THEME.bg,
