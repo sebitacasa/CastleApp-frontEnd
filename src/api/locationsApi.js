@@ -83,11 +83,11 @@ export const getLocations = async (lat, lon) => {
 // Endpoint: GET /?lat=...&lon=...&category=...
 export const getMapLocations = async (lat, lon, category = 'All') => {
     try {
-        const response = await api.get('/', { 
-            params: { lat, lon, category } 
+        const response = await api.get('/', {
+            params: { lat, lon, category }
         });
-        // El backend devuelve array directo [...]
-        return formatLocations(response.data);
+        // El backend devuelve { data: [...], nextGoogleToken }
+        return formatLocations(response.data?.data || []);
     } catch (error) {
         console.error("🔥 Error cargando mapa:", error.message);
         return [];

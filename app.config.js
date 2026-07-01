@@ -10,21 +10,15 @@ export default {
     "orientation": "portrait",
     "icon": "./assets/Images/brujula.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.sebit.castleapp"
     },
     "android": {
       "package": "com.sebit.castleapp",
-      "versionCode": 14, 
       "adaptiveIcon": {
-        "foregroundImage": "./assets/Images/brujula.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#ffffff",
+        "foregroundImage": "./assets/Images/brujula-adaptive.png"
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
@@ -41,7 +35,16 @@ export default {
     },
     "plugins": [
       "expo-web-browser",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/Images/brujula.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
+          "backgroundColor": "#ffffff"
+        }
+      ]
     ],
     "extra": {
       "eas": {

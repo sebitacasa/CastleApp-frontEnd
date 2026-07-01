@@ -14,15 +14,8 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { AuthContext } from '../context/AuthContext';
 
-// --- 🎨 USAMOS TU PALETA DE COLORES ---
-const THEME = {
-  bg: '#121212',
-  card: '#1E1E1E',
-  gold: '#D4AF37',
-  text: '#F0F0F0',
-  subText: '#A0A0A0',
-  overlay: 'rgba(0,0,0,0.7)', // Más oscuro para legibilidad
-};
+// 👇 IMPORTAMOS TU PALETA GLOBAL
+import { APP_PALETTE as THEME } from '../theme/colors';
 
 const BACKGROUND_IMAGE = 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1996&auto=format&fit=crop';
 
@@ -32,8 +25,8 @@ const LoginScreen = ({ navigation }) => {
 
   useEffect(() => {
     GoogleSignin.configure({
-      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID, 
-    //webClientId: "51947307719-ehsb2ihd1tv5mct6o98oklqscolb0p22.apps.googleusercontent.com", 
+      webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+      //webClientId: "51947307719-ehsb2ihd1tv5mct6o98oklqscolb0p22.apps.googleusercontent.com", 
       offlineAccess: true,
       forceCodeForRefreshToken: true,
     });
@@ -82,9 +75,10 @@ const LoginScreen = ({ navigation }) => {
       style={styles.background}
       resizeMode="cover"
     >
-      <StatusBar barStyle="light-content" transparent backgroundColor="transparent" />
+      {/* 💡 Cambiado a dark-content para que se vea el reloj sobre el fondo claro */}
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       
-      {/* Overlay oscuro para resaltar el texto */}
+      {/* 💡 Overlay color pergamino translúcido en lugar de negro */}
       <View style={styles.overlay}>
         
         <View style={styles.header}>
@@ -124,13 +118,15 @@ const LoginScreen = ({ navigation }) => {
   );
 };
 
+// --- 🎨 ESTILOS "PERGAMINO" INTEGRADOS ---
 const styles = StyleSheet.create({
   background: {
     flex: 1,
   },
   overlay: {
     flex: 1,
-    backgroundColor: THEME.overlay,
+    // 💡 rgba(244, 241, 234, 0.85) es el equivalente transparente de THEME.bg (#F4F1EA)
+    backgroundColor: 'rgba(244, 241, 234, 0.85)', 
     justifyContent: 'space-between',
     paddingHorizontal: 40,
     paddingVertical: 80,
@@ -142,13 +138,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 42,
     fontWeight: 'bold',
-    color: THEME.text,
+    color: THEME.text, // 💡 Tinta sepia oscura
     fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif',
     marginTop: 10,
   },
   subtitle: {
     fontSize: 16,
-    color: THEME.subText,
+    color: THEME.subText, // 💡 Gris pardo
     fontStyle: 'italic',
     marginTop: 5,
     letterSpacing: 1,
@@ -165,14 +161,14 @@ const styles = StyleSheet.create({
     borderRadius: 12, 
     alignItems: 'center', 
     justifyContent: 'center',
-    elevation: 5,
+    elevation: 3,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.15, // 💡 Sombra suavizada
     shadowRadius: 5,
   },
   buttonText: { 
-    color: THEME.bg, 
+    color: THEME.bg, // 💡 Texto claro sobre botón dorado
     fontWeight: 'bold', 
     fontSize: 15, 
     marginLeft: 12,

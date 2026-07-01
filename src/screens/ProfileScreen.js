@@ -15,16 +15,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios'; 
 import { AuthContext } from '../context/AuthContext';
 
-// --- 🎨 PALETA DE COLORES CASTLEAPP ---
-const THEME = {
-  bg: '#121212',
-  card: '#1E1E1E',
-  gold: '#D4AF37',
-  goldDim: 'rgba(212, 175, 55, 0.2)',
-  text: '#F0F0F0',
-  subText: '#A0A0A0',
-  danger: '#CF6679',
-};
+// 👇 IMPORTAMOS TU PALETA GLOBAL
+import { APP_PALETTE as THEME } from '../theme/colors';
 
 // 🏰 IMAGEN NUEVA: Un castillo épico/oscuro
 const UPLOAD_BG = 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?q=80&w=800&auto=format&fit=crop';
@@ -32,7 +24,6 @@ const UPLOAD_BG = 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?
 const ProfileScreen = ({ navigation }) => {
   const { userInfo, logout } = useContext(AuthContext);
 
-  // --- 👇 LÓGICA DE FOTO MEJORADA ---
   const userPhoto = 
     userInfo?.picture || 
     userInfo?.photoURL || 
@@ -42,7 +33,6 @@ const ProfileScreen = ({ navigation }) => {
     userInfo?.user?.photoURL ||
     'https://via.placeholder.com/150';
 
-  // --- LÓGICA DE NOMBRE ---
   const userName = 
     userInfo?.name || 
     userInfo?.displayName || 
@@ -50,7 +40,6 @@ const ProfileScreen = ({ navigation }) => {
     userInfo?.user_metadata?.full_name ||
     'Explorer';
 
-  // --- FUNCIÓN DE ELIMINAR CUENTA ---
   const handleDeleteAccount = () => {
     Alert.alert(
       "Delete Account", 
@@ -82,9 +71,11 @@ const ProfileScreen = ({ navigation }) => {
     );
   };
 
+  // --- VISTA DE MODO INVITADO ---
   if (!userInfo) {
     return (
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
+         <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
          <MaterialCommunityIcons name="account-lock" size={80} color={THEME.gold} />
          <Text style={styles.guestTitle}>Guest Mode</Text>
          <Text style={styles.guestSub}>Sign in to track your conquests and build your profile.</Text>
@@ -95,9 +86,11 @@ const ProfileScreen = ({ navigation }) => {
     );
   }
 
+  // --- VISTA DE USUARIO LOGUEADO ---
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
+      {/* 💡 dark-content para el fondo pergamino */}
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
       
       {/* --- HEADER --- */}
       <View style={styles.headerNav}>
@@ -132,16 +125,16 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.sectionTitle}>Contribute Legacy</Text>
             
             <TouchableOpacity 
-                activeOpacity={0.8} // Un poco más sensible al tacto
+                activeOpacity={0.8} 
                 style={styles.uploadCard}
                 onPress={() => navigation.navigate('MainTabs', { screen: 'Discover' })}
             >
                 <ImageBackground 
                     source={{ uri: UPLOAD_BG }} 
                     style={styles.uploadBackground} 
-                    // 👇 CAMBIO 1: Imagen más visible (0.6 en vez de 0.3)
-                    imageStyle={{ borderRadius: 16, opacity: 0.6 }} 
+                    imageStyle={{ borderRadius: 16, opacity: 0.8 }} // Un poco más visible la foto
                 >
+                    {/* 💡 Overlay con tinte pergamino en lugar de negro puro */}
                     <View style={styles.uploadOverlay}>
                         <View style={styles.uploadIconCircle}>
                             <MaterialCommunityIcons name="feather" size={28} color={THEME.bg} />
@@ -198,16 +191,18 @@ const ProfileScreen = ({ navigation }) => {
   );
 };
 
+// Componente helper para no repetir tanto código
 const MenuOption = ({ icon, label, onPress, color, noBorder }) => (
     <TouchableOpacity style={[styles.menuItem, !noBorder && styles.menuBorder]} onPress={onPress}>
         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
             <Ionicons name={icon} size={22} color={color} style={{ marginRight: 15 }} />
             <Text style={[styles.menuText, { color: color }]}>{label}</Text>
         </View>
-        <Ionicons name="chevron-forward" size={18} color="#444" />
+        <Ionicons name="chevron-forward" size={18} color={THEME.subText} />
     </TouchableOpacity>
 );
 
+// --- 🎨 ESTILOS "PERGAMINO" INTEGRADOS ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.bg },
   
@@ -236,7 +231,7 @@ const styles = StyleSheet.create({
       position: 'absolute', bottom: 0, right: 0, 
       backgroundColor: THEME.gold, borderRadius: 12, 
       width: 24, height: 24, justifyContent: 'center', alignItems: 'center',
-      borderWidth: 2, borderColor: THEME.bg
+      borderWidth: 2, borderColor: THEME.bg // Borde del color de fondo
   },
   nameText: {
       fontSize: 26, fontWeight: 'bold', color: THEME.text, marginBottom: 5,
@@ -247,18 +242,23 @@ const styles = StyleSheet.create({
   sectionContainer: { paddingHorizontal: 20, marginBottom: 30 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: THEME.text, marginBottom: 15 },
   
-  // 👇 CAMBIO 2: Estilos de la tarjeta actualizados con borde
   uploadCard: { 
       height: 160, 
       borderRadius: 16, 
       overflow: 'hidden',
-      borderWidth: 1,          // Borde fino
-      borderColor: THEME.gold  // Color dorado
+      borderWidth: 1, 
+      borderColor: THEME.border, // Borde tenue tipo pergamino
+      elevation: 4,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.1,
+      shadowRadius: 5,
   },
   uploadBackground: { width: '100%', height: '100%', justifyContent: 'center' },
   uploadOverlay: {
       flex: 1, 
-      backgroundColor: 'rgba(0,0,0,0.35)', // Más claro (antes 0.6)
+      // 💡 Fondo claro y algo transparente para que la imagen se vea "lavada/vieja"
+      backgroundColor: 'rgba(244, 241, 234, 0.7)', 
       justifyContent: 'center', 
       alignItems: 'center', 
       padding: 20
@@ -267,12 +267,30 @@ const styles = StyleSheet.create({
       width: 50, height: 50, borderRadius: 25, backgroundColor: THEME.gold,
       justifyContent: 'center', alignItems: 'center', marginBottom: 10
   },
-  uploadTitle: { fontSize: 20, fontWeight: 'bold', color: '#FFF', fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif', letterSpacing: 0.5 },
-  uploadSubtitle: { fontSize: 13, color: '#E0E0E0', textAlign: 'center', marginTop: 5, maxWidth: '90%', lineHeight: 18 },
+  uploadTitle: { 
+      fontSize: 20, fontWeight: 'bold', color: THEME.text, 
+      fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif', letterSpacing: 0.5 
+  },
+  uploadSubtitle: { 
+      fontSize: 13, color: THEME.text, textAlign: 'center', 
+      marginTop: 5, maxWidth: '90%', lineHeight: 18 
+  },
 
-  menuContainer: { backgroundColor: THEME.card, marginHorizontal: 20, borderRadius: 16, padding: 10 },
+  menuContainer: { 
+      backgroundColor: THEME.card, 
+      marginHorizontal: 20, 
+      borderRadius: 16, 
+      padding: 10,
+      borderWidth: 1,
+      borderColor: THEME.border,
+      elevation: 2,
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.05,
+      shadowRadius: 3,
+  },
   menuItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 10 },
-  menuBorder: { borderBottomWidth: 1, borderBottomColor: '#333' },
+  menuBorder: { borderBottomWidth: 1, borderBottomColor: THEME.border }, // Borde separador
   menuText: { fontSize: 16, fontWeight: '500' },
 
   guestTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.text, marginTop: 20 },

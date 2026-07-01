@@ -17,45 +17,16 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
-import axios from "axios"
-import { AuthContext } from '../context/AuthContext';
+import axios from "axios";
 
+import { AuthContext } from '../context/AuthContext';
 import { FavoritesContext } from '../context/FavoritesContext';
 
-// --- 🎨 PALETA DE COLORES "SCRATCH MAP" ---
-const THEME = {
-  bg: '#121212',           // Negro Fondo Profundo
-  card: '#1E1E1E',         // Gris Oscuro para secciones
-  gold: '#D4AF37',         // Dorado Clásico
-  text: '#F0F0F0',         // Blanco Hueso
-  subText: '#A0A0A0',      // Gris Plata
-  divider: '#333333',      // Líneas divisorias sutiles
-  overlay: 'rgba(0,0,0,0.6)', // Oscurecer imágenes
-};
+import { APP_PALETTE as THEME } from '../theme/colors';
 
-//const API_BASE = 'http://10.0.2.2:8080';
-// Debe ser https (seguro) y terminar en up.railway.app
 const API_BASE = 'https://castleapp-backend-production.up.railway.app';
 const { width, height } = Dimensions.get('window');
-const IMG_HEIGHT = height * 0.45; // Imagen grande e inmersiva
-const MAX_LENGTH = 150; 
-
-// --- MAP STYLE (DARK MODE) ---
-const DARK_MAP_STYLE = [
-  {"elementType":"geometry","stylers":[{"color":"#212121"}]},
-  {"elementType":"labels.icon","stylers":[{"visibility":"off"}]},
-  {"elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},
-  {"elementType":"labels.text.stroke","stylers":[{"color":"#212121"}]},
-  {"featureType":"administrative","elementType":"geometry","stylers":[{"color":"#757575"}]},
-  {"featureType":"administrative.country","elementType":"labels.text.fill","stylers":[{"color":"#9e9e9e"}]},
-  {"featureType":"administrative.locality","elementType":"labels.text.fill","stylers":[{"color":"#bdbdbd"}]},
-  {"featureType":"poi","elementType":"labels.text.fill","stylers":[{"color":"#757575"}]},
-  {"featureType":"poi.park","elementType":"geometry","stylers":[{"color":"#181818"}]},
-  {"featureType":"poi.park","elementType":"labels.text.fill","stylers":[{"color":"#616161"}]},
-  {"featureType":"road","elementType":"geometry.fill","stylers":[{"color":"#2c2c2c"}]},
-  {"featureType":"road.highway","elementType":"geometry.fill","stylers":[{"color":"#3c3c3c"}]},
-  {"featureType":"water","elementType":"geometry","stylers":[{"color":"#000000"}]}
-];
+const IMG_HEIGHT = height * 0.45; 
 
 const getPlaceholderImage = (category) => {
   const cat = category?.toLowerCase() || '';
@@ -77,17 +48,16 @@ export default function DetailScreen({ route, navigation }) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [fullDescription, setFullDescription] = useState(null); 
   const [loadingDesc, setLoadingDesc] = useState(false);     
+  // 💡 NUEVO ESTADO: Saber si Wikipedia falló en segundo plano
+  const [wikiFailed, setWikiFailed] = useState(false); 
+
   const { userInfo } = useContext(AuthContext);
 
- const handleToggleFav = () => {
-    // A. Verificamos si es un usuario invitado o no logueado
+  const handleToggleFav = () => {
     if (!userInfo || (typeof userInfo === 'object' && Object.keys(userInfo).length === 0)) {
-        // Si no hay usuario, lo mandamos al Login
         navigation.navigate('LoginScreen'); 
         return; 
     }
-
-    // B. Si está registrado, permitimos el like
     toggleFavorite(locationData);
   };
 
@@ -96,29 +66,60 @@ export default function DetailScreen({ route, navigation }) {
     setIsFullScreenVisible(true);
   };
 
-const handleReadMore = async () => {
-  try {
-    setLoadingDesc(true);
-    const response = await axios.get(`${API_BASE}/api/external/wiki`, {
-      params: { title: locationData.wiki_title }
-    });
-
-    // IMPORTANTE: Tu backend devuelve { full_description: "..." }
-    if (response.data && response.data.full_description) {
-      setFullDescription(response.data.full_description);
+  // 💡 ACTUALIZADO: Acepta isManualClick para saber si debe mostrar alertas o callar
+  const handleReadMore = async (isManualClick = false) => {
+    try {
+      setLoadingDesc(true);
       
+      // 💡 Si no vino wiki_title (el backend no encontró match al armar el feed),
+      // buscamos solo por el nombre. Pegarle la dirección completa (que incluye
+      // código postal, ej: "1010 Wien, Austria") arruina la relevancia de la
+      // búsqueda en Wikipedia y casi nunca encuentra nada.
+      const searchTerm = locationData.wiki_title || locationData.name;
+      // country_code es el ISO-2 (ej. "IT") que ya viene resuelto por Google
+      // Places en el backend -- mucho más confiable que parsear texto libre de
+      // dirección, y es lo que el backend usa para elegir el Wikipedia en el
+      // idioma correcto. Si no vino (lugar de la comunidad / versión vieja del
+      // feed) el backend cae directo a inglés.
+      const response = await axios.get(`${API_BASE}/api/external/wiki`, {
+        params: { title: searchTerm, country_code: locationData.country_code }
+      });
+
+      if (response.data && response.data.full_description) {
+        setFullDescription(response.data.full_description);
+        setWikiFailed(false);
+      } else {
+        setWikiFailed(true);
+        if (isManualClick) Alert.alert("History", "No detailed history found for this specific place.");
+      }
+      
+    } catch (error) {
+      setWikiFailed(true); // 💡 Si falla, lo marcamos silenciosamente
+      if (isManualClick) {
+          if (error.response && error.response.status === 404) {
+              Alert.alert("History", "No English Wikipedia article found for this specific place.");
+          } else {
+              Alert.alert("Server Error", "Could not retrieve the history right now.");
+          }
+      }
+    } finally {
+      setLoadingDesc(false);
     }
-  } catch (error) {
-    console.error("Error al traer Wiki:", error);
-  } finally {
-    setLoadingDesc(false);
-  }
-};
+  };
 
   if (!locationData) return null;
 
   const lat = parseFloat(locationData.latitude || locationData.lat || 0);
   const lon = parseFloat(locationData.longitude || locationData.lon || 0);
+
+  const formatDistance = (distInKm) => {
+    if (distInKm === null || distInKm === undefined) return null;
+    if (distInKm < 1) {
+      return `${Math.round(distInKm * 1000)} m`;
+    }
+    return `${distInKm.toFixed(1)} km`;
+  };
+  const formattedDistance = formatDistance(locationData.distance);
 
   let gallery = [];
   if (locationData.images && Array.isArray(locationData.images) && locationData.images.length > 0) {
@@ -149,72 +150,86 @@ const handleReadMore = async () => {
     Linking.openURL(url).catch(() => Alert.alert("Error", "No se pudo abrir mapas."));
   };
 
-useEffect(() => {
-    // Si tenemos el título pero aún no hemos bajado la descripción de Wikipedia
-    if (locationData?.wiki_title && !fullDescription && !loadingDesc) {
-        console.log("📖 Cargando historia completa para:", locationData.wiki_title);
-        handleReadMore(); // Esta función llama a /api/wiki-details
-    }
-}, [locationData?.wiki_title]);
+  // 💡 AUTO-CARGA SILENCIOSA
+  useEffect(() => {
+      const searchTerm = locationData?.wiki_title || locationData?.name;
+      // Añadimos !wikiFailed para que no intente infinitamente si ya falló
+      if (searchTerm && !fullDescription && !loadingDesc && !wikiFailed) {
+          handleReadMore(false); // false = Fallar en silencio, sin alertas
+      }
+  }, [locationData]);
 
-// 🛠️ 2. Función de Renderizado Estricta
-const renderDescription = () => {
-    // 1. Decidimos qué texto base usar (Wikipedia si ya cargó, sino Google)
-    const baseText = fullDescription ? fullDescription : (locationData.description || "");
-    
-    // 2. TRUNCADO: Si no está expandido, cortamos a 150 caracteres
-    const textToShow = isExpanded 
-        ? baseText 
-        : baseText.substring(0, 150) + (baseText.length > 150 ? "..." : "");
+  // 💡 LÓGICA DE DESCRIPCIÓN INTELIGENTE
+  const renderDescription = () => {
+      const fallbackText = locationData.description || "No further details available for this location.";
+      const baseText = fullDescription ? fullDescription : fallbackText;
+      
+      const isLongText = baseText.length > 150;
+      const textToShow = isExpanded 
+          ? baseText 
+          : (isLongText ? baseText.substring(0, 150) + "..." : baseText);
 
-    return (
-        <View style={{ marginBottom: 20 }}>
-            <Text style={[styles.description, { lineHeight: 22 }]}>
-                {textToShow}
-            </Text>
-            
-            <TouchableOpacity 
-                onPress={() => {
-                    if (!fullDescription && locationData.wiki_title) {
-                        // Si no hay wiki, la descarga (el useEffect ya lo hace, 
-                        // pero esto es por seguridad si el usuario pulsa rápido)
-                        handleReadMore(); 
-                        setIsExpanded(true);
-                    } else {
-                        // Toggle normal
-                        setIsExpanded(!isExpanded);
-                    }
-                }} 
-                style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center' }}
-            >
-                {loadingDesc ? (
-                    <ActivityIndicator size="small" color={THEME.gold} />
-                ) : (
-                    <>
-                        <Text style={[styles.readMoreText, { color: THEME.gold, fontWeight: 'bold' }]}>
-                            {isExpanded ? 'SHOW LESS' : 'READ FULL HISTORY FROM WIKIPEDIA'}
-                        </Text>
-                        <Ionicons 
-                            name={isExpanded ? "chevron-up" : "chevron-down"} 
-                            size={16} 
-                            color={THEME.gold} 
-                            style={{ marginLeft: 5 }} 
-                        />
-                    </>
-                )}
-            </TouchableOpacity>
+      return (
+          <View style={{ marginBottom: 20 }}>
+              <Text style={[styles.description, { lineHeight: 22 }]}>
+                  {textToShow}
+              </Text>
+              
+              {/* Si wiki falló Y el texto de Google es corto, no mostramos ningún botón */}
+              {(!wikiFailed || isLongText) && (
+                  <TouchableOpacity 
+                      onPress={() => {
+                          if (!fullDescription && !wikiFailed) {
+                              handleReadMore(true); 
+                              setIsExpanded(true);
+                          } else {
+                              setIsExpanded(!isExpanded);
+                          }
+                      }} 
+                      style={{ marginTop: 10, flexDirection: 'row', alignItems: 'center' }}
+                  >
+                      {loadingDesc ? (
+                          <ActivityIndicator size="small" color={THEME.gold} />
+                      ) : (
+                          <>
+                              <Text style={[styles.readMoreText, { color: THEME.gold, fontWeight: 'bold' }]}>
+                                  {isExpanded 
+                                      ? 'SHOW LESS' 
+                                      : (fullDescription || wikiFailed ? 'READ MORE' : 'READ FULL HISTORY FROM WIKIPEDIA')
+                                  }
+                              </Text>
+                              <Ionicons 
+                                  name={isExpanded ? "chevron-up" : "chevron-down"} 
+                                  size={16} 
+                                  color={THEME.gold} 
+                                  style={{ marginLeft: 5 }} 
+                              />
+                          </>
+                      )}
+                  </TouchableOpacity>
+              )}
 
-            {isExpanded && fullDescription && (
-                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 15, opacity: 0.5 }}>
-                    <MaterialCommunityIcons name="wikipedia" size={14} color={THEME.gold} />
-                    <Text style={{ color: THEME.gold, fontSize: 10, marginLeft: 5 }}>
-                        WIKIPEDIA SOURCE
-                    </Text>
-                </View>
-            )}
-        </View>
-    );
-};
+              {/* Créditos de la fuente si está expandido */}
+              {isExpanded && fullDescription && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 15, opacity: 0.5 }}>
+                      <MaterialCommunityIcons name="wikipedia" size={14} color={THEME.gold} />
+                      <Text style={{ color: THEME.gold, fontSize: 10, marginLeft: 5 }}>
+                          WIKIPEDIA SOURCE
+                      </Text>
+                  </View>
+              )}
+              {isExpanded && !fullDescription && locationData.source === 'google' && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 15, opacity: 0.5 }}>
+                      <Ionicons name="logo-google" size={14} color={THEME.gold} />
+                      <Text style={{ color: THEME.gold, fontSize: 10, marginLeft: 5 }}>
+                          GOOGLE PLACES
+                      </Text>
+                  </View>
+              )}
+          </View>
+      );
+  };
+
   const renderCarouselItem = ({ item, index }) => {
     const imageUrl = getProcessedUrl(item);
     if (!imageUrl) return null;
@@ -227,7 +242,6 @@ const renderDescription = () => {
             style={styles.carouselImage} 
             resizeMode="cover" 
           />
-          {/* Overlay oscuro para que los botones blancos resalten */}
           <View style={styles.imageOverlay} />
         </View>
       </TouchableOpacity>
@@ -254,7 +268,6 @@ const renderDescription = () => {
       
       <ScrollView contentContainerStyle={{ paddingBottom: 40 }} showsVerticalScrollIndicator={false} > 
         
-        {/* CARRUSEL INMERSIVO */}
         <View style={styles.carouselContainer}>
           <FlatList
             data={gallery}
@@ -269,17 +282,14 @@ const renderDescription = () => {
             }}
           />
 
-          {/* BOTÓN BACK FLOTANTE (ESTILO CÍRCULO) */}
           <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={24} color="#FFF" />
           </TouchableOpacity>
 
-          {/* BOTÓN FAVORITOS FLOTANTE */}
           <TouchableOpacity style={styles.favButton} onPress={handleToggleFav} activeOpacity={0.8}>
-            <Ionicons name={isFav ? "heart" : "heart-outline"} size={26} color={isFav ? "#D4AF37" : "#FFF"} />
+            <Ionicons name={isFav ? "heart" : "heart-outline"} size={26} color={isFav ? THEME.gold : "#FFF"} />
           </TouchableOpacity>
 
-          {/* PAGINACIÓN */}
           {gallery.length > 1 && (
             <View style={styles.pagination}>
               {gallery.map((_, i) => (
@@ -289,10 +299,8 @@ const renderDescription = () => {
           )}
         </View>
 
-        {/* CONTENIDO PRINCIPAL (NEGRO) */}
         <View style={styles.contentContainer}>
           
-          {/* BADGE CATEGORÍA DORADO */}
           <View style={styles.categoryBadge}>
             <MaterialCommunityIcons name="bookmark" size={14} color={THEME.bg} style={{marginRight: 4}} />
             <Text style={styles.categoryText}>{locationData.category?.toUpperCase() || 'HISTORIC SITE'}</Text>
@@ -302,12 +310,14 @@ const renderDescription = () => {
 
           <View style={styles.locationRow}>
               <Ionicons name="location-sharp" size={18} color={THEME.gold} style={{marginRight: 6}} />
-              <Text style={styles.locationText}>{locationData.country || 'Ubicación desconocida'}</Text>
+              <Text style={styles.locationText}>
+                  {locationData.country || 'Unknown location'}
+                  {formattedDistance ? ` • ${formattedDistance} away` : ''}
+              </Text>
           </View>
 
           <View style={styles.divider} />
 
-          {/* SECCIÓN MAPA */}
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="map-marker-radius" size={20} color={THEME.gold} />
             <Text style={styles.sectionTitle}>Location</Text>
@@ -325,12 +335,10 @@ const renderDescription = () => {
                 }}
                 scrollEnabled={false}
                 zoomEnabled={false}
-                customMapStyle={DARK_MAP_STYLE} // 🗺️ MAPA MODO NOCTURNO
             >
                 <Marker coordinate={{ latitude: lat, longitude: lon }} pinColor={THEME.gold} />
             </MapView>
             
-            {/* Botón "Cómo llegar" Estilo Botón Dorado */}
             <TouchableOpacity style={styles.directionsButton} onPress={openExternalMaps} activeOpacity={0.8}>
                 <Ionicons name="navigate" size={18} color={THEME.bg} style={{marginRight: 8}} />
                 <Text style={styles.directionsText}>NAVIGATE HERE</Text>
@@ -339,7 +347,6 @@ const renderDescription = () => {
 
           <View style={styles.divider} />
 
-          {/* SECCIÓN HISTORIA */}
           <View style={styles.sectionHeader}>
             <MaterialCommunityIcons name="script-text-outline" size={20} color={THEME.gold} />
             <Text style={styles.sectionTitle}>History & Details</Text>
@@ -350,7 +357,6 @@ const renderDescription = () => {
         </View>
       </ScrollView>
 
-      {/* MODAL PANTALLA COMPLETA */}
       <Modal
         visible={isFullScreenVisible}
         transparent={true}
@@ -383,14 +389,12 @@ const renderDescription = () => {
   );
 }
 
-// --- 🎨 ESTILOS "BLACK & GOLD" INTEGRADOS ---
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.bg,
   },
   
-  // Carrusel
   carouselContainer: {
     height: IMG_HEIGHT,
     position: 'relative',
@@ -401,10 +405,9 @@ const styles = StyleSheet.create({
   },
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.25)', // Sombra para que se vean los botones blancos
+    backgroundColor: 'rgba(0,0,0,0.25)', 
   },
   
-  // Botones Flotantes (Círculos)
   backButton: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 50 : 40,
@@ -412,7 +415,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.5)', // Vidrio oscuro
+    backgroundColor: 'rgba(0,0,0,0.5)', 
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -434,7 +437,7 @@ const styles = StyleSheet.create({
 
   pagination: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 40, 
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'center',
@@ -453,18 +456,16 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
 
-  // Contenido Principal
   contentContainer: {
     flex: 1,
     backgroundColor: THEME.bg,
-    borderTopLeftRadius: 30, // Curva suave para superponerse a la imagen
+    borderTopLeftRadius: 30, 
     borderTopRightRadius: 30,
-    marginTop: -30, // Efecto de superposición
+    marginTop: -30, 
     paddingHorizontal: 25,
     paddingTop: 30,
   },
   
-  // Badge Dorado
   categoryBadge: {
     alignSelf: 'flex-start',
     backgroundColor: THEME.gold,
@@ -476,7 +477,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   categoryText: {
-    color: THEME.bg, // Texto negro sobre dorado
+    color: THEME.bg, 
     fontWeight: 'bold',
     fontSize: 12,
     letterSpacing: 1,
@@ -503,11 +504,10 @@ const styles = StyleSheet.create({
 
   divider: {
     height: 1,
-    backgroundColor: THEME.divider,
+    backgroundColor: THEME.border,
     marginVertical: 20,
   },
 
-  // Títulos de Sección
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -521,13 +521,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
 
-  // Mapa
   miniMapContainer: {
     height: 200,
     borderRadius: 16,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: THEME.divider,
+    borderColor: THEME.border, 
     position: 'relative',
   },
   miniMap: {
@@ -555,10 +554,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
 
-  // Descripción
   description: {
     fontSize: 16,
-    color: '#CCC', // Gris claro para lectura cómoda
+    color: THEME.text, 
     lineHeight: 26,
     textAlign: 'justify',
   },
@@ -578,7 +576,6 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // Full Screen Modal
   fullScreenContainer: {
     flex: 1,
     backgroundColor: '#000',

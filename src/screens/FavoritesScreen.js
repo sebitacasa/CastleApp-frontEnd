@@ -13,16 +13,8 @@ import { FavoritesContext } from '../context/FavoritesContext';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 
-// --- 🎨 PALETA DE COLORES ---
-const THEME = {
-  bg: '#121212',           
-  cardBg: '#1E1E1E',       
-  gold: '#D4AF37',         
-  text: '#F0F0F0',         
-  subText: '#A0A0A0',      
-  danger: '#CF6679',       
-  border: '#333333',       
-};
+// 👇 IMPORTAMOS TU PALETA GLOBAL
+import { APP_PALETTE as THEME } from '../theme/colors';
 
 const FavoritesScreen = () => {
   const { favorites, toggleFavorite } = useContext(FavoritesContext);
@@ -35,30 +27,22 @@ const FavoritesScreen = () => {
 
   // --- 🖼️ HELPER DE IMÁGENES (SIMPLIFICADO) ---
   const getSecureImage = (item) => {
-    // 1. Si no hay item, placeholder
     if (!item) return 'https://via.placeholder.com/150';
 
-    // 2. Intentar sacar la URL de donde venga
     let rawUrl = item.image_url;
     
-    // A veces PostgreSQL guarda arrays como strings raros, esto lo limpia si pasara
     if (item.images && Array.isArray(item.images) && item.images.length > 0) {
         rawUrl = item.images[0];
     }
     
-    // 3. Limpieza básica de string (quita llaves {} o comillas extra)
     if (typeof rawUrl === 'string') {
         rawUrl = rawUrl.replace(/[{}"\\]/g, '').split(',')[0];
     }
     
-    // 4. VERIFICACIÓN FINAL
-    // Si la URL existe y es https, la usamos DIRECTAMENTE.
-    // Google Places nos da URLs que empiezan con https://places.googleapis.com...
     if (rawUrl && typeof rawUrl === 'string' && rawUrl.startsWith('http')) {
         return rawUrl;
     }
 
-    // 5. Fallback: Si todo falla, foto genérica bonita
     return 'https://images.unsplash.com/photo-1599576838688-8a6c11263052?q=80&w=800'; 
   };
 
@@ -66,17 +50,29 @@ const FavoritesScreen = () => {
   if (favorites.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
-        <MaterialCommunityIcons name="heart-broken" size={80} color={THEME.gold} style={{ opacity: 0.5 }} />
-        <Text style={styles.emptyText}>No Treasures Yet</Text>
-        <Text style={styles.emptySubText}>Explore the map and mark the places you want to conquer.</Text>
+        {/* 💡 dark-content para fondo pergamino */}
+        <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
         
-       <TouchableOpacity 
-    style={styles.exploreButton} 
-    onPress={() => navigation.navigate('MainTabs', { screen: 'Feed' })} 
->
-    <Text style={styles.exploreButtonText}>START EXPLORING</Text>
-</TouchableOpacity>
+        {/* HEADER PARA ESTADO VACÍO */}
+        <View style={styles.emptyHeader}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+               <Ionicons name="arrow-back" size={24} color={THEME.text} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>My Favorites</Text>
+        </View>
+
+        <View style={styles.emptyContent}>
+            <MaterialCommunityIcons name="heart-broken" size={80} color={THEME.gold} style={{ opacity: 0.5 }} />
+            <Text style={styles.emptyText}>No Treasures Yet</Text>
+            <Text style={styles.emptySubText}>Explore the map and mark the places you want to conquer.</Text>
+            
+            <TouchableOpacity 
+                style={styles.exploreButton} 
+                onPress={() => navigation.navigate('MainTabs', { screen: 'Feed' })} 
+            >
+                <Text style={styles.exploreButtonText}>START EXPLORING</Text>
+            </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -93,6 +89,7 @@ const FavoritesScreen = () => {
         style={styles.image} 
         resizeMode="cover"
       />
+      {/* Mantenemos un overlay oscuro para contraste con el texto interno de la foto */}
       <View style={styles.imageOverlay} />
 
       <View style={styles.info}>
@@ -100,10 +97,11 @@ const FavoritesScreen = () => {
             <Text style={styles.categoryText}>{item.category?.toUpperCase() || 'HISTORY'}</Text>
         </View>
 
+        {/* 💡 Forzamos blanco para textos sobre fotos oscuras */}
         <Text numberOfLines={1} style={styles.name}>{item.name}</Text>
         
         <View style={styles.locationRow}>
-            <Ionicons name="location-sharp" size={12} color={THEME.subText} />
+            <Ionicons name="location-sharp" size={12} color="#DDD" />
             <Text numberOfLines={1} style={styles.location}>
                 {item.city || item.country || item.address || "Unknown Location"}
             </Text>
@@ -118,7 +116,8 @@ const FavoritesScreen = () => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
+      {/* 💡 dark-content para fondo pergamino */}
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
       
       {/* HEADER */}
       <View style={styles.header}>
@@ -142,7 +141,7 @@ const FavoritesScreen = () => {
   );
 };
 
-// --- ESTILOS ---
+// --- 🎨 ESTILOS "PERGAMINO" INTEGRADOS ---
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.bg },
   
@@ -158,33 +157,56 @@ const styles = StyleSheet.create({
   countText: { color: THEME.bg, fontWeight: 'bold', fontSize: 12 },
   backButton: { padding: 5 },
 
-  emptyContainer: { flex: 1, backgroundColor: THEME.bg, justifyContent: 'center', alignItems: 'center', padding: 30 },
-  emptyText: { color: THEME.text, fontSize: 22, fontWeight: 'bold', marginTop: 20 },
+  // Estilos de estado vacío
+  emptyContainer: { flex: 1, backgroundColor: THEME.bg },
+  emptyHeader: {
+    flexDirection: 'row', alignItems: 'center', paddingTop: Platform.OS === 'ios' ? 60 : 50,
+    paddingHorizontal: 20, zIndex: 10,
+  },
+  emptyContent: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 30 },
+  emptyText: { color: THEME.text, fontSize: 22, fontWeight: 'bold', marginTop: 20, fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif' },
   emptySubText: { color: THEME.subText, textAlign: 'center', marginTop: 10, marginBottom: 30, lineHeight: 20 },
-  exploreButton: { backgroundColor: THEME.gold, paddingHorizontal: 30, paddingVertical: 14, borderRadius: 30, elevation: 5 },
+  exploreButton: { backgroundColor: THEME.gold, paddingHorizontal: 30, paddingVertical: 14, borderRadius: 30, elevation: 3, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 3 },
   exploreButtonText: { color: THEME.bg, fontWeight: 'bold', letterSpacing: 1 },
 
+  // Tarjeta de favorito
   card: {
-    height: 180, backgroundColor: THEME.cardBg, borderRadius: 16, marginBottom: 20, overflow: 'hidden',
-    position: 'relative', borderWidth: 1, borderColor: THEME.border, elevation: 4,
+    height: 180, 
+    backgroundColor: THEME.card, // 💡 Usa el color de tarjeta del tema
+    borderRadius: 16, 
+    marginBottom: 20, 
+    overflow: 'hidden',
+    position: 'relative', 
+    borderWidth: 1, 
+    borderColor: THEME.border, // 💡 Borde tenue
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   image: { width: '100%', height: '100%' },
-  imageOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.4)' },
+  imageOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.35)' }, // Un poco más claro
   info: { position: 'absolute', bottom: 0, left: 0, right: 0, padding: 15, justifyContent: 'flex-end' },
   name: {
-    color: THEME.text, fontSize: 20, fontWeight: 'bold', marginBottom: 4,
+    color: '#FFF', // Forzamos blanco porque va sobre la foto oscurecida
+    fontSize: 20, fontWeight: 'bold', marginBottom: 4,
     textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3,
   },
   locationRow: { flexDirection: 'row', alignItems: 'center' },
-  location: { color: '#DDD', fontSize: 13, marginLeft: 4 },
+  location: { color: '#E0E0E0', fontSize: 13, marginLeft: 4 }, // Forzamos gris claro para contraste
+  
   categoryBadge: {
     position: 'absolute', top: -120, left: 0, backgroundColor: THEME.gold,
     paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6,
   },
   categoryText: { color: THEME.bg, fontSize: 10, fontWeight: 'bold' },
+  
   deleteBtn: {
     position: 'absolute', top: 10, right: 10, backgroundColor: 'rgba(0,0,0,0.6)',
     padding: 8, borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)'
   }
 });
 

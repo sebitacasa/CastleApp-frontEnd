@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useContext, useRef, useMemo } 
 import { 
   View, Text, FlatList, ActivityIndicator, 
   StatusBar, RefreshControl, TouchableOpacity, 
-  ImageBackground, Animated, Image, StyleSheet, Dimensions, Platform, Alert
+  Animated, Image, StyleSheet, Dimensions, Platform, Alert
 } from 'react-native';
 
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -13,39 +13,20 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthContext } from '../context/AuthContext';
 import StoryCard from '../components/StoryCard';
 import CitySearch from '../components/CitySearch'; 
-
-// --- 🎨 CONFIGURACIÓN ---
-const THEME = {
-  bg: '#121212',           
-  card: '#1E1E1E',         
-  gold: '#D4AF37',         
-  goldDim: 'rgba(212, 175, 55, 0.15)', 
-  text: '#F0F0F0',         
-  subText: '#A0A0A0',      
-  danger: '#CF6679',       
-  overlay: 'rgba(0,0,0,0.7)', 
-  placeholder: '#2A2A2A'
-};
+import { APP_PALETTE as THEME } from '../theme/colors';
 
 const API_BASE = 'https://castleapp-backend-production.up.railway.app';
 
-// 20 es el límite duro de Google Places API por página
 const ITEMS_PER_PAGE = 20; 
-// Mínimo de items en pantalla antes de dejar de pedir páginas automáticas
 const MIN_ITEMS_TO_FILL_SCREEN = 15; 
 
 const HEADER_HEIGHT = 280; 
-const HEADER_IMAGE = 'https://images.unsplash.com/photo-1552832230-c0197dd311b5?q=80&w=1996&auto=format&fit=crop';
 const ITEM_HEIGHT = 320; 
 
-// ⚡ CACHE CONFIG
 const CACHE_RADIUS_KM = 5.0; 
 const CACHE_EXPIRY_MS = 24 * 60 * 60 * 1000; 
-
-// 🛡️ SEGURIDAD DE UBICACIÓN
 const MAX_RADIUS_KM = 100; 
 
-// 🌍 DICCIONARIO DE DETECCIÓN
 const GLOBAL_KEYWORDS = {
     castles: ['schloss', 'burg', 'festung', 'palast', 'castle', 'fortress', 'palace', 'citadel', 'castillo', 'fortaleza', 'alcázar', 'château', 'forteresse', 'castello', 'fortezza', 'castelo', 'hrad', 'vár', 'slot'],
     ruins: ['ruin', 'ruine', 'ruina', 'rovina', 'trosky'],
@@ -81,18 +62,18 @@ const SkeletonCard = () => {
   }, [opacityAnim]);
 
   return (
-    <View style={{ height: ITEM_HEIGHT - 20, marginHorizontal: 16, marginBottom: 20, borderRadius: 16, backgroundColor: THEME.card, overflow: 'hidden' }}>
-        <Animated.View style={{ width: '100%', height: '65%', backgroundColor: THEME.placeholder, opacity: opacityAnim }} />
+    <View style={{ height: ITEM_HEIGHT - 20, marginHorizontal: 16, marginBottom: 20, borderRadius: 16, backgroundColor: THEME.card, overflow: 'hidden', borderWidth: 1, borderColor: THEME.border }}>
+        <Animated.View style={{ width: '100%', height: '65%', backgroundColor: THEME.border, opacity: opacityAnim }} />
         <View style={{ padding: 16 }}>
-            <Animated.View style={{ width: '60%', height: 20, backgroundColor: THEME.placeholder, borderRadius: 4, marginBottom: 10, opacity: opacityAnim }} />
-            <Animated.View style={{ width: '40%', height: 16, backgroundColor: THEME.placeholder, borderRadius: 4, opacity: opacityAnim }} />
+            <Animated.View style={{ width: '60%', height: 20, backgroundColor: THEME.border, borderRadius: 4, marginBottom: 10, opacity: opacityAnim }} />
+            <Animated.View style={{ width: '40%', height: 16, backgroundColor: THEME.border, borderRadius: 4, opacity: opacityAnim }} />
         </View>
     </View>
   );
 };
 
 const getDistanceFromLatLonInKm = (lat1, lon1, lat2, lon2) => {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return 0; // Evita NaN
+  if (!lat1 || !lon1 || !lat2 || !lon2) return 0; 
   const nLat1 = parseFloat(lat1); const nLon1 = parseFloat(lon1);
   const nLat2 = parseFloat(lat2); const nLon2 = parseFloat(lon2);
   const R = 6371; 
@@ -113,7 +94,6 @@ export default function FeedScreen() {
   let rawName = userInfo?.name || userInfo?.displayName || userInfo?.username || userInfo?.email?.split('@')[0];
   const userName = rawName ? rawName.split(' ')[0] : 'Explorer';
 
-  // --- STATE ---
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -126,6 +106,8 @@ export default function FeedScreen() {
   const [searchKey, setSearchKey] = useState(0); 
   const [menuVisible, setMenuVisible] = useState(false);
 
+  const [googlePageToken, setGooglePageToken] = useState(null);
+
   const scrollY = useRef(new Animated.Value(0)).current;
   const flatListRef = useRef(null); 
   const scrollYClamped = Animated.diffClamp(scrollY, 0, HEADER_HEIGHT);
@@ -133,7 +115,6 @@ export default function FeedScreen() {
     inputRange: [0, HEADER_HEIGHT], outputRange: [0, -HEADER_HEIGHT / 1.5], extrapolate: 'clamp', 
   });
 
-  // --- 🛰️ UBI HELPER (GPS REAL + ERROR HANDLING) ---
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
@@ -143,7 +124,6 @@ export default function FeedScreen() {
           return;
       }
 
-      // 1. Ubicación rápida
       const lastKnown = await Location.getLastKnownPositionAsync({});
       if (lastKnown) {
           setActiveLocation({ 
@@ -154,9 +134,7 @@ export default function FeedScreen() {
           });
       }
 
-      // 2. Ubicación Precisa (Con timeout para evitar bloqueo)
       try {
-          // Timeout de 5s para no bloquear si el GPS del emulador falla
           const freshLoc = await Promise.race([
               Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
               new Promise((_, reject) => setTimeout(() => reject(new Error("GPS Timeout")), 5000))
@@ -194,12 +172,13 @@ export default function FeedScreen() {
   }, [activeLocation, selectedCategory]); 
 
   const handleCitySelected = (coordinates, locationName) => {
-    setLocations([]); setPage(1); setHasMore(true); 
+    setLocations([]); setPage(1); setHasMore(true); setGooglePageToken(null);
     setActiveLocation({ lon: coordinates[0], lat: coordinates[1], label: locationName, isManual: true });
   };
 
   const clearSearch = async () => {
       setLocations([]); setLoading(true); setPage(1); setHasMore(true); setSelectedCategory('All');
+      setGooglePageToken(null); 
       setSearchKey(prev => prev + 1); 
       
       try {
@@ -212,11 +191,8 @@ export default function FeedScreen() {
       }
   };
 
-  // --- 📡 CARGA DE DATOS (MODO ASPIRADORA) ---
-  const loadData = useCallback(async (targetPage = 1, isRefresh = false, locationOverride = null, isSilent = false, recursiveCount = 0) => {
-    // 🛑 Freno de emergencia para recursión infinita (max 5 intentos)
+ const loadData = useCallback(async (targetPage = 1, isRefresh = false, locationOverride = null, isSilent = false, recursiveCount = 0) => {
     if (recursiveCount > 5) {
-        console.log("🛑 Recursión detenida. Se mostraron los que se pudieron.");
         setLoading(false); setRefreshing(false); setLoadingMore(false);
         return;
     }
@@ -226,13 +202,15 @@ export default function FeedScreen() {
 
     const currentLoc = locationOverride || activeLocation;
     if (!currentLoc || isNaN(currentLoc.lat) || isNaN(currentLoc.lon)) {
-        console.log("⚠️ Sin ubicación válida, esperando...");
         return;
     }
 
     let loadedFromCache = false;
 
-    // CACHÉ (Solo página 1 y si no es recursivo)
+    if (targetPage === 1) {
+        setGooglePageToken(null);
+    }
+
     if (targetPage === 1 && !isRefresh && !currentLoc.isManual && recursiveCount === 0) {
         try {
             const cacheKey = `FEED_CACHE_${selectedCategory}`;
@@ -243,8 +221,8 @@ export default function FeedScreen() {
                 const dist = getDistanceFromLatLonInKm(currentLoc.lat, currentLoc.lon, parsedCache.lat, parsedCache.lon);
                 
                 if ((now - parsedCache.timestamp < CACHE_EXPIRY_MS) && dist < CACHE_RADIUS_KM && parsedCache.data.length > 0) {
-                    console.log(`💾 [CACHE] Cargando ${parsedCache.data.length} items...`);
-                    setLocations(parsedCache.data);
+                    const sortedCache = parsedCache.data.sort((a, b) => (a.distance != null ? a.distance : Infinity) - (b.distance != null ? b.distance : Infinity));
+                    setLocations(sortedCache);
                     setLoading(false);
                     setHasMore(true);
                     loadedFromCache = true;
@@ -270,27 +248,14 @@ export default function FeedScreen() {
       const latFixed = parseFloat(currentLoc.lat).toFixed(6);
       const lonFixed = parseFloat(currentLoc.lon).toFixed(6);
 
-      // 🌍 RADIO DE 50KM PARA TRAER TODO LO POSIBLE
-      const radiusParam = `&radius=50000`; 
+      const radiusParam = `&radius=50000`;
 
-      let url;
-      const textSearchCategories = ['Castles', 'Ruins', 'Religious', 'Historic Site'];
-      const isTextSearch = textSearchCategories.includes(selectedCategory);
-
-      if (currentLoc.isManual) {
-          const query = encodeURIComponent(currentLoc.label);
-          url = `${ROUTE_PREFIX}/external/search?q=${query}&lat=${latFixed}&lon=${lonFixed}&${params}${radiusParam}`;
-      } else if (isTextSearch) {
-          const query = encodeURIComponent(selectedCategory); 
-          url = `${ROUTE_PREFIX}/external/search?q=${query}&lat=${latFixed}&lon=${lonFixed}&${params}${radiusParam}`;
-      } else {
-          url = `${ROUTE_PREFIX}/?lat=${latFixed}&lon=${lonFixed}&${params}${radiusParam}`;
-          if (selectedCategory !== 'All' && selectedCategory !== 'Others' && selectedCategory !== 'Community') {
-              url += `&category=${encodeURIComponent(selectedCategory)}`;
-          }
+      // 💡 CitySearch siempre entrega lat/lon reales (búsqueda manual o GPS),
+      // así que todas las categorías pasan por el mismo endpoint híbrido (DB + Google Nearby Search).
+      let url = `${ROUTE_PREFIX}/?lat=${latFixed}&lon=${lonFixed}&${params}${radiusParam}`;
+      if (selectedCategory !== 'All' && selectedCategory !== 'Others') {
+          url += `&category=${encodeURIComponent(selectedCategory)}`;
       }
-
-      console.log(`🌐 [Pag ${targetPage}] Fetching... (Intento: ${recursiveCount})`);
 
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 15000));
       const response = await Promise.race([fetch(url), timeoutPromise]);
@@ -303,33 +268,39 @@ export default function FeedScreen() {
       if (Array.isArray(json)) rawData = json;
       else if (json.data && Array.isArray(json.data)) rawData = json.data;
 
-      // 1. FILTRO DE SEGURIDAD (CON TOLERANCIA A ERRORES GPS)
-      const filteredData = rawData.filter(item => {
-          // Si es búsqueda manual, confiamos en Google y NO filtramos por distancia
-          if (currentLoc.isManual) return true;
+      if (json.nextGoogleToken) {
+          setGooglePageToken(json.nextGoogleToken);
+      } else if (targetPage === 1) {
+          setGooglePageToken(null);
+      }
 
+      const filteredData = rawData.map(item => {
           const rawLat = item.latitude || item.lat || item.geometry?.location?.lat;
           const rawLon = item.longitude || item.lon || item.geometry?.location?.lng;
           
-          // Si el item no tiene coordenadas, lo dejamos pasar por si acaso
-          if (!rawLat || !rawLon) return true;
-
-          const dist = getDistanceFromLatLonInKm(currentLoc.lat, currentLoc.lon, rawLat, rawLon);
-          return dist <= MAX_RADIUS_KM; 
+          let dist = null;
+          if (rawLat && rawLon) {
+              dist = getDistanceFromLatLonInKm(currentLoc.lat, currentLoc.lon, rawLat, rawLon);
+          }
+          return { ...item, computedDistance: dist };
+      }).filter(item => {
+          if (currentLoc.isManual) return true;
+          if (item.computedDistance === null) return true;
+          return item.computedDistance <= MAX_RADIUS_KM; 
       });
 
-      // 2. CATEGORIZACIÓN INTELIGENTE (EL EMBUDO)
       const finalData = filteredData.map(item => {
-          if (item.latitude && item.image_url) return item; 
+          if (item.latitude && item.image_url) {
+              return { ...item, distance: item.computedDistance }; 
+          }
 
-          let finalCat = 'Others'; // Por defecto a las sobras
+          let finalCat = 'Others'; 
           
           const types = item.types || [];
           const iconUrl = item.icon || ""; 
           const nameLower = item.name ? item.name.toLowerCase() : "";
           const hasKeyword = (list) => list.some(key => nameLower.includes(key));
 
-          // Prioridades
           if (types.includes('castle') || types.includes('fortress') || (iconUrl.includes('historic') && hasKeyword(GLOBAL_KEYWORDS.castles))) {
               finalCat = 'Castles';
           } 
@@ -342,11 +313,9 @@ export default function FeedScreen() {
           else if (types.includes('church') || types.includes('place_of_worship') || iconUrl.includes('worship') || hasKeyword(GLOBAL_KEYWORDS.religious)) {
               finalCat = 'Religious';
           } 
-          // SITIOS HISTÓRICOS (Estricto)
           else if (types.includes('historic_site') || types.includes('archaeological_site')) {
               finalCat = 'Historic Site';
           }
-          // Si cae aquí, es 'Others' (parques, atracciones turísticas generales, puntos de interés)
 
           return {
               id: item.place_id || item.id || Math.random().toString(),
@@ -356,19 +325,18 @@ export default function FeedScreen() {
               longitude: item.geometry?.location?.lng || item.lon,
               category: finalCat, 
               image_url: null, 
-              source: 'google'
+              source: 'google',
+              distance: item.computedDistance 
           };
       });
 
-      // 3. FILTRADO FINAL ESTRICTO
-      const displayData = finalData.filter(item => {
+      let displayData = finalData.filter(item => {
           if (selectedCategory === 'All') return true;
           return item.category === selectedCategory;
       });
 
-      console.log(`📍 Crudos: ${rawData.length} | Mostrados: ${displayData.length}`);
+      displayData.sort((a, b) => (a.distance != null ? a.distance : Infinity) - (b.distance != null ? b.distance : Infinity));
 
-      // ACTUALIZACIÓN DE ESTADO
       let currentTotalItems = 0;
 
       if (targetPage === 1) {
@@ -390,21 +358,18 @@ export default function FeedScreen() {
               const existingIds = new Set(prev.map(item => item.id));
               const uniqueNewData = displayData.filter(item => !existingIds.has(item.id));
               currentTotalItems = prev.length + uniqueNewData.length;
-              return [...prev, ...uniqueNewData];
+              
+              const combined = [...prev, ...uniqueNewData];
+              return combined.sort((a, b) => (a.distance != null ? a.distance : Infinity) - (b.distance != null ? b.distance : Infinity));
           });
       }
       
       setPage(targetPage);
       
-      // Chequeo de "Hay más en Google"
-      const googleHasMore = rawData.length >= ITEMS_PER_PAGE;
+      const googleHasMore = rawData.length >= ITEMS_PER_PAGE || !!json.nextGoogleToken;
       setHasMore(googleHasMore);
 
-      // 🌪️ MODO ASPIRADORA (AUTO-RECARGA) 🌪️
-      // Si la lista total en pantalla es corta (< 15) Y Google dice que hay más páginas...
-      // ¡PEDIMOS LA SIGUIENTE INMEDIATAMENTE!
       if (currentTotalItems < MIN_ITEMS_TO_FILL_SCREEN && googleHasMore) {
-          console.log("⚡ Pocos items... Aspirando siguiente página automáticamente.");
           loadData(targetPage + 1, false, currentLoc, true, recursiveCount + 1);
       } else {
           setLoading(false);
@@ -413,12 +378,11 @@ export default function FeedScreen() {
       }
 
     } catch (e) { 
-        console.error("🔥 [FEED ERROR]:", e); 
         if (targetPage === 1 && !loadedFromCache) setLocations([]); 
         setLoading(false); setRefreshing(false); setLoadingMore(false);
     } 
-  }, [activeLocation, selectedCategory, loadingMore, locations.length, hasMore]);
-
+  }, [activeLocation, selectedCategory, loadingMore, locations.length, hasMore, googlePageToken]);
+  
   const handleLoadMore = () => {
       if (hasMore && !loadingMore && !loading) {
           loadData(page + 1);
@@ -469,103 +433,76 @@ export default function FeedScreen() {
 
   return (
     <View style={localStyles.mainContainer}>
-      <StatusBar barStyle="light-content" backgroundColor={THEME.bg} />
+      <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
       
       <Animated.View style={[localStyles.animatedHeaderContainer, { transform: [{ translateY }] }]}>
-          <ImageBackground source={{ uri: HEADER_IMAGE }} style={localStyles.headerBackground} imageStyle={{ opacity: 0.6 }}>
-            <View style={localStyles.headerOverlay}> 
-                <View style={localStyles.navTopRow}>
-                    <TouchableOpacity style={localStyles.logoRow} onPress={clearSearch} activeOpacity={0.7} disabled={loading}>
-                        <MaterialCommunityIcons name="compass-outline" size={28} color={THEME.gold} />
-                        <Text style={localStyles.navTitle}>CastleApp</Text>
-                    </TouchableOpacity>
-                    <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <TouchableOpacity onPress={() => navigation.navigate('Map')} style={{ marginRight: 15 }}>
-                            <Ionicons name="map" size={26} color={THEME.text} />
-                        </TouchableOpacity>
-                        <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
-                            {isLoggedIn && userPhoto ? (
-                                <Image source={{ uri: userPhoto }} style={localStyles.avatarSmall} />
-                            ) : (
-                                <Ionicons name="menu" size={30} color={THEME.gold} />
-                            )}
-                        </TouchableOpacity>
-                    </View>
-                </View>
-
-                <View style={{ zIndex: 2000, marginTop: 10 }}>
-                    <CitySearch key={searchKey} onLocationSelect={handleCitySelected} />
-                </View>
-
-                <View style={{ marginTop: 15 }}>
-                    {activeLocation && (
-                        <View style={localStyles.locationBadge}>
-                            <Ionicons name="location-sharp" size={16} color={THEME.gold} />
-                            <Text style={localStyles.locationText} numberOfLines={1}>{activeLocation.label}</Text>
-                            <TouchableOpacity onPress={clearSearch} style={localStyles.resetButton}>
-                                <Ionicons name="refresh" size={12} color={THEME.bg} />
-                            </TouchableOpacity>
-                        </View>
-                    )}
-                    <View style={{ marginTop: 15, paddingBottom: 10 }}> 
-                        <FlatList
-                            data={categories} horizontal showsHorizontalScrollIndicator={false}
-                            contentContainerStyle={{ paddingHorizontal: 5 }}
-                            renderItem={({item}) => (
-                                <TouchableOpacity 
-                                    onPress={() => {
-                                        if (selectedCategory === item) return;
-                                        setLocations([]); 
-                                        setLoading(true);
-                                        setSelectedCategory(item);
-                                    }} 
-                                    style={[localStyles.catBtn, selectedCategory === item && localStyles.catBtnActive]}
-                                >
-                                    <Text style={[localStyles.catText, selectedCategory === item && localStyles.catTextActive]}>{item}</Text>
-                                </TouchableOpacity>
-                            )}
-                        />
-                    </View>
-                </View>
-            </View> 
-          </ImageBackground>
-          
-          {menuVisible && (
-              <View style={localStyles.dropdownMenu}>
-                  <View style={localStyles.arrowUp} />
-                  <TouchableOpacity style={localStyles.menuHeader} activeOpacity={0.7} onPress={() => { setMenuVisible(false); navigation.navigate('ProfileScreen'); }}>
-                      {isLoggedIn && userPhoto ? (
-                          <Image source={{ uri: userPhoto }} style={localStyles.avatarLarge} />
-                      ) : (
-                          <View style={localStyles.avatarPlaceholder}><Ionicons name="person" size={28} color={THEME.bg} /></View>
-                      )}
-                      <Text style={localStyles.menuUserLabel}>{isLoggedIn ? 'Explorer Rank' : 'Guest Mode'}</Text>
-                      <Text style={localStyles.menuUserName} numberOfLines={1}>{isLoggedIn ? userName : 'Guest User'}</Text>
-                      <Text style={{ color: THEME.gold, fontSize: 14, marginTop: 4 }}>View Profile <Ionicons name="chevron-forward" size={14} /></Text>
+          <View style={localStyles.headerContent}> 
+              <View style={localStyles.navTopRow}>
+                  <TouchableOpacity style={localStyles.logoRow} onPress={clearSearch} activeOpacity={0.7} disabled={loading}>
+                      <MaterialCommunityIcons name="compass-outline" size={28} color={THEME.gold} />
+                      <Text style={localStyles.navTitle}>CastleApp</Text>
                   </TouchableOpacity>
-
-                  <View style={localStyles.separator} />
-                  
-                  {isLoggedIn ? (
-                    <>
-                        <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('Favorites'); }}>
-                            <Ionicons name="heart" size={20} color={THEME.gold} />
-                            <Text style={localStyles.menuItemText}>My Favorites</Text>
-                        </TouchableOpacity>
-                        <View style={localStyles.separator} />
-                        <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); logout(); }}>
-                            <Ionicons name="log-out" size={20} color={THEME.danger} />
-                            <Text style={[localStyles.menuItemText, { color: THEME.danger }]}>Sign Out</Text>
-                        </TouchableOpacity>
-                    </>
-                  ) : (
-                    <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('LoginScreen'); }}>
-                        <Ionicons name="log-in" size={20} color={THEME.gold} />
-                        <Text style={[localStyles.menuItemText, { color: THEME.gold, fontWeight: 'bold' }]}>Sign In / Register</Text>
-                    </TouchableOpacity>
-                  )}
+                  <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                     <TouchableOpacity 
+    onPress={() => navigation.navigate('Map', { 
+        feedLocations: locations, // Pasamos la lista actual del feed
+        currentCoords: activeLocation ? {
+            latitude: activeLocation.lat,
+            longitude: activeLocation.lon,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05
+        } : null
+    })} 
+    style={{ marginRight: 15 }}
+>
+    <Ionicons name="map" size={26} color={THEME.text} />
+</TouchableOpacity>
+                      <TouchableOpacity onPress={() => setMenuVisible(!menuVisible)}>
+                          {isLoggedIn && userPhoto ? (
+                              <Image source={{ uri: userPhoto }} style={localStyles.avatarSmall} />
+                          ) : (
+                              <Ionicons name="menu" size={30} color={THEME.gold} />
+                          )}
+                      </TouchableOpacity>
+                  </View>
               </View>
-          )}
+
+              <View style={{ zIndex: 2000, marginTop: 10 }}>
+                  <CitySearch key={searchKey} onLocationSelect={handleCitySelected} />
+              </View>
+
+              <View style={{ marginTop: 15 }}>
+                  {activeLocation && (
+                      <View style={localStyles.locationBadge}>
+                          <Ionicons name="location-sharp" size={16} color={THEME.gold} />
+                          <Text style={localStyles.locationText} numberOfLines={1}>{activeLocation.label}</Text>
+                          <TouchableOpacity onPress={clearSearch} style={localStyles.resetButton}>
+                              <Ionicons name="refresh" size={12} color={THEME.bg} />
+                          </TouchableOpacity>
+                      </View>
+                  )}
+                  <View style={{ marginTop: 15, paddingBottom: 10 }}> 
+                      <FlatList
+                          data={categories} horizontal showsHorizontalScrollIndicator={false}
+                          contentContainerStyle={{ paddingHorizontal: 5 }}
+                          renderItem={({item}) => (
+                              <TouchableOpacity 
+                                  onPress={() => {
+                                      if (selectedCategory === item) return;
+                                      setLocations([]); 
+                                      setLoading(true);
+                                      setGooglePageToken(null); 
+                                      setSelectedCategory(item);
+                                  }} 
+                                  style={[localStyles.catBtn, selectedCategory === item && localStyles.catBtnActive]}
+                              >
+                                  <Text style={[localStyles.catText, selectedCategory === item && localStyles.catTextActive]}>{item}</Text>
+                              </TouchableOpacity>
+                          )}
+                      />
+                  </View>
+              </View>
+          </View> 
       </Animated.View>
 
       <View style={{ flex: 1, backgroundColor: THEME.bg }}>
@@ -576,6 +513,9 @@ export default function FeedScreen() {
                   renderItem={renderItem}
                   keyExtractor={(item) => item.id.toString()}
                   getItemLayout={getItemLayout}
+                  onScrollBeginDrag={() => {
+                      if (menuVisible) setMenuVisible(false);
+                  }}
                   onMomentumScrollEnd={() => {}}
                   onScrollEndDrag={() => {}}
                   initialNumToRender={4}    
@@ -595,37 +535,85 @@ export default function FeedScreen() {
               />
           )}
       </View>
+
+      {/* 💡 BOTÓN INVISIBLE MEJORADO PARA ANDROID */}
+      {menuVisible && (
+          <TouchableOpacity 
+              style={[StyleSheet.absoluteFill, { zIndex: 2500, elevation: 4 }]} 
+              activeOpacity={1} 
+              onPress={() => setMenuVisible(false)} 
+              onPressIn={() => setMenuVisible(false)} // 👈 EL TRUCO PARA ANDROID: Se dispara apenas tocas
+          />
+      )}
+
+      {menuVisible && (
+          <View style={localStyles.dropdownMenu}>
+              <View style={localStyles.arrowUp} />
+              <TouchableOpacity style={localStyles.menuHeader} activeOpacity={0.7} onPress={() => { setMenuVisible(false); navigation.navigate('ProfileScreen'); }}>
+                  {isLoggedIn && userPhoto ? (
+                      <Image source={{ uri: userPhoto }} style={localStyles.avatarLarge} />
+                  ) : (
+                      <View style={localStyles.avatarPlaceholder}><Ionicons name="person" size={28} color={THEME.bg} /></View>
+                  )}
+                  <Text style={localStyles.menuUserLabel}>{isLoggedIn ? 'Explorer Rank' : 'Guest Mode'}</Text>
+                  <Text style={localStyles.menuUserName} numberOfLines={1}>{isLoggedIn ? userName : 'Guest User'}</Text>
+                  <Text style={{ color: THEME.gold, fontSize: 14, marginTop: 4 }}>View Profile <Ionicons name="chevron-forward" size={14} /></Text>
+              </TouchableOpacity>
+
+              <View style={localStyles.separator} />
+              
+              {isLoggedIn ? (
+                <>
+                    <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('Favorites'); }}>
+                        <Ionicons name="heart" size={20} color={THEME.gold} />
+                        <Text style={localStyles.menuItemText}>My Favorites</Text>
+                    </TouchableOpacity>
+                    <View style={localStyles.separator} />
+                    <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); logout(); }}>
+                        <Ionicons name="log-out" size={20} color={THEME.danger} />
+                        <Text style={[localStyles.menuItemText, { color: THEME.danger }]}>Sign Out</Text>
+                    </TouchableOpacity>
+                </>
+              ) : (
+                <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('LoginScreen'); }}>
+                    <Ionicons name="log-in" size={20} color={THEME.gold} />
+                    <Text style={[localStyles.menuItemText, { color: THEME.gold, fontWeight: 'bold' }]}>Sign In / Register</Text>
+                </TouchableOpacity>
+              )}
+          </View>
+      )}
     </View>
   );
 }
 
 const localStyles = StyleSheet.create({
   mainContainer: { flex: 1, backgroundColor: THEME.bg },
-  animatedHeaderContainer: { position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_HEIGHT, zIndex: 1000, backgroundColor: THEME.bg, borderBottomWidth: 1, borderBottomColor: '#333' },
-  headerBackground: { width: '100%', height: '100%', backgroundColor: THEME.bg },
-  headerOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', paddingTop: Platform.OS === 'ios' ? 60 : 60, paddingHorizontal: 20, justifyContent: 'flex-start' },
+  animatedHeaderContainer: { position: 'absolute', top: 0, left: 0, right: 0, height: HEADER_HEIGHT, zIndex: 1000, backgroundColor: THEME.bg, borderBottomWidth: 1, borderBottomColor: THEME.border },
+  headerContent: { flex: 1, paddingTop: Platform.OS === 'ios' ? 60 : 60, paddingHorizontal: 20, justifyContent: 'flex-start' },
   navTopRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   logoRow: { flexDirection: 'row', alignItems: 'center' },
   navTitle: { fontSize: 22, fontWeight: 'bold', color: THEME.text, marginLeft: 8 },
   avatarSmall: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: THEME.gold },
-  locationBadge: { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)', paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: THEME.goldDim },
+  locationBadge: { flexDirection: 'row', alignSelf: 'flex-start', alignItems: 'center', backgroundColor: THEME.card, paddingVertical: 6, paddingHorizontal: 12, borderRadius: 20, borderWidth: 1, borderColor: THEME.border },
   locationText: { color: THEME.gold, fontWeight: 'bold', fontSize: 14, marginLeft: 6, maxWidth: 200 },
   resetButton: { marginLeft: 10, backgroundColor: THEME.gold, width: 18, height: 18, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
   catBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8, backgroundColor: 'transparent', borderWidth: 1, borderColor: THEME.subText, marginRight: 10 },
   catBtnActive: { backgroundColor: THEME.gold, borderColor: THEME.gold },
   catText: { color: THEME.subText, fontSize: 13, fontWeight: '600' },
-  catTextActive: { color: '#000', fontWeight: 'bold' },
+  catTextActive: { color: THEME.bg, fontWeight: 'bold' },
   emptyState: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  dropdownMenu: { position: 'absolute', top: 90, right: 20, width: 220, backgroundColor: '#1A1A1A', borderRadius: 12, padding: 15, zIndex: 3000, borderWidth: 1, borderColor: '#333' },
-  arrowUp: { position: 'absolute', top: -10, right: 15, width: 0, height: 0, borderLeftWidth: 10, borderRightWidth: 10, borderBottomWidth: 10, borderStyle: 'solid', borderBottomColor: '#333', borderLeftColor: 'transparent', borderRightColor: 'transparent' },
+  
+  dropdownMenu: { position: 'absolute', top: 90, right: 20, width: 220, backgroundColor: THEME.card, borderRadius: 12, padding: 15, zIndex: 3000, borderWidth: 1, borderColor: THEME.border, shadowColor: "#000", shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 6, elevation: 5 },
+  arrowUp: { position: 'absolute', top: -10, right: 15, width: 0, height: 0, borderLeftWidth: 10, borderRightWidth: 10, borderBottomWidth: 10, borderStyle: 'solid', borderBottomColor: THEME.card, borderLeftColor: 'transparent', borderRightColor: 'transparent' },
   menuHeader: { alignItems: 'center', marginBottom: 10 },
   avatarLarge: { width: 60, height: 60, borderRadius: 30, borderWidth: 2, borderColor: THEME.gold, marginBottom: 8 },
   avatarPlaceholder: { width: 60, height: 60, borderRadius: 30, backgroundColor: THEME.gold, justifyContent: 'center', alignItems: 'center', marginBottom: 8 },
   menuUserLabel: { color: THEME.subText, fontSize: 12, textTransform: 'uppercase', letterSpacing: 1 },
   menuUserName: { color: THEME.text, fontSize: 16, fontWeight: 'bold', marginTop: 2 },
-  separator: { height: 1, backgroundColor: '#333', marginVertical: 10 },
+  separator: { height: 1, backgroundColor: THEME.border, marginVertical: 10 },
   menuItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 10 },
   menuItemText: { color: THEME.text, marginLeft: 12, fontSize: 15 },
+  
   communityBadge: {
     position: 'absolute',
     top: 15,
@@ -638,13 +626,13 @@ const localStyles = StyleSheet.create({
     alignItems: 'center',
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.2,
     shadowRadius: 3.84,
     elevation: 5,
     zIndex: 10
   },
   communityText: {
-      color: '#000',
+      color: THEME.bg,
       fontWeight: 'bold',
       fontSize: 10,
       letterSpacing: 0.5

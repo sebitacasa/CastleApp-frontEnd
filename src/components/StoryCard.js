@@ -6,16 +6,8 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { AuthContext } from '../context/AuthContext';
 import { FavoritesContext } from '../context/FavoritesContext';
 
-// --- 🎨 PALETA DE COLORES "SCRATCH MAP" ---
-const THEME = {
-  cardBg: '#1E1E1E',       // Gris oscuro para la tarjeta
-  gold: '#D4AF37',         // Dorado Clásico
-  goldDim: 'rgba(212, 175, 55, 0.15)', // Dorado suave
-  text: '#F0F0F0',         // Blanco hueso
-  subText: '#A0A0A0',      // Gris plata
-  border: '#333333',       // Borde sutil
-  danger: '#CF6679',       // Para errores o acciones destructivas
-};
+// 👇 1. IMPORTAMOS TU PALETA GLOBAL AQUÍ
+import { APP_PALETTE as THEME } from '../theme/colors';
 
 const API_BASE = 'https://castleapp-backend-production.up.railway.app';
 const BACKUP_URL = 'https://images.pexels.com/photos/2422265/pexels-photo-2422265.jpeg?auto=compress&cs=tinysrgb&w=800';
@@ -24,49 +16,47 @@ const StoryCard = memo(({ item, navigation }) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   // --- 1. HOOKS DE CONTEXTO ---
-  const { userInfo } = useContext(AuthContext); // Para saber si es Guest o Usuario registrado
-  const { toggleFavorite, isFavorite } = useContext(FavoritesContext); // Para manejar la DB local de favs
+  const { userInfo } = useContext(AuthContext); 
+  const { toggleFavorite, isFavorite } = useContext(FavoritesContext); 
 
   // Verificamos si este item ya es favorito
   const isFav = isFavorite(item.id);
 
   // --- 2. LÓGICA DE URL DE IMAGEN ---
-// ✅ SOLUCIÓN: Usar la URL directa
-const finalUrl = useMemo(() => {
-    // 1. Obtenemos la URL (tu backend devuelve 'image_url')
+  const finalUrl = useMemo(() => {
     let rawUrl = item.image_url || item.images?.[0];
-
-    // 2. Si no hay URL, devolvemos null (se mostrará el placeholder)
     if (!rawUrl) return null;
-
-    // 3. Limpieza básica por si viene con comillas extrañas de la DB
     let processed = String(rawUrl).trim().replace(/["{}]/g, "");
-
-    // 4. Devolvemos la URL tal cual (Google/Wiki/Unsplash ya son accesibles)
     return processed;
-}, [item.image_url, item.images]);
+  }, [item.image_url, item.images]);
+
   const handlePress = () => {
     navigation.navigate('Detail', { locationData: item });
   };
 
   // --- 3. LÓGICA DEL GUARDIA DE FAVORITOS 🛡️ ---
   const handleFavoritePress = () => {
-    // A. Si NO hay usuario (es invitado), mandarlo al Login
     if (!userInfo || (typeof userInfo === 'object' && Object.keys(userInfo).length === 0)) {
-        // Opcional: Podrías pasar el item como params si quisieras redirigir directo al volver
         navigation.navigate('LoginScreen'); 
         return; 
     }
-
-    // B. Si SÍ hay usuario, ejecutar la acción de favorito
     toggleFavorite(item);
   };
 
-  // Helper para limpiar el HTML del autor
-  // const cleanAuthor = (text) => {
-  //     if (!text) return 'Wiki Commons';
-  //     return text.replace(/<[^>]*>?/gm, '').trim();
-  // };
+  // --- 4. 📍 FORMATEO DE DISTANCIA ---
+  const formatDistance = (distInKm) => {
+    if (distInKm === null || distInKm === undefined) return null;
+    
+    // Si es menos de 1 km, mostrar en metros (ej: 850 m)
+    if (distInKm < 1) {
+      const meters = Math.round(distInKm * 1000);
+      return `${meters} m`;
+    }
+    // Si es más de 1 km, mostrar con 1 decimal (ej: 3.2 km)
+    return `${distInKm.toFixed(1)} km`;
+  };
+
+  const formattedDistance = formatDistance(item.distance);
 
   return (
     <TouchableOpacity 
@@ -116,15 +106,6 @@ const finalUrl = useMemo(() => {
                 color={isFav ? THEME.gold : "#FFF"} 
             />
         </TouchableOpacity>
-
-        {/* F. Badge de Créditos / Autor (Bottom-Right) */}
-        {/* {finalUrl && (
-            <View style={styles.creditBadge}>
-                <Text style={styles.creditText} numberOfLines={1}>
-                    📸 {cleanAuthor(item.author)} • {item.license || 'CC BY'}
-                </Text>
-            </View>
-        )} */}
       </View>
 
       {/* 2. SECCIÓN DE INFORMACIÓN */}
@@ -133,11 +114,12 @@ const finalUrl = useMemo(() => {
         {/* Título Serif Elegante */}
         <Text style={styles.title} numberOfLines={1}>{item.name}</Text>
         
-        {/* Ubicación con Icono Dorado */}
+        {/* Ubicación con Icono Dorado Y DISTANCIA */}
         <View style={styles.locationRow}>
             <Ionicons name="location-sharp" size={14} color={THEME.gold} />
             <Text style={styles.location} numberOfLines={1}>
-                {item.country || 'Unknown Location'}
+                {item.country || item.vicinity || 'Unknown Location'}
+                {formattedDistance ? ` • ${formattedDistance} away` : ''}
             </Text>
         </View>
         
@@ -165,7 +147,7 @@ const finalUrl = useMemo(() => {
 // --- 🎨 ESTILOS INTEGRADOS ---
 const styles = StyleSheet.create({
   cardContainer: {
-    backgroundColor: THEME.cardBg,
+    backgroundColor: THEME.card, // 💡 Usando THEME.card
     borderRadius: 16,
     marginBottom: 20,
     marginHorizontal: 15,
@@ -173,17 +155,17 @@ const styles = StyleSheet.create({
     borderColor: THEME.border,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.5,
-    shadowRadius: 6,
-    elevation: 8,
+    shadowOpacity: 0.08, // 💡 Sombra súper sutil para fondos claros
+    shadowRadius: 8,
+    elevation: 3, // 💡 Menos elevación nativa
     overflow: 'hidden',
   },
   
   // Imagen
-  imageContainer: {
+ imageContainer: {
     height: 180,
     width: '100%',
-    backgroundColor: '#000',
+    backgroundColor: THEME.border, // ✅ AHORA ES UN GRIS PIEDRA SUAVE
     position: 'relative', 
   },
   cardImagePlaceholder: {
@@ -195,9 +177,10 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
+  // La imagen mantiene overlays oscuros para que los textos/íconos resalten
   imageOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: 'rgba(0,0,0,0.15)',
   },
 
   // Badge Categoría (Arriba Izquierda)
@@ -207,12 +190,12 @@ const styles = StyleSheet.create({
     left: 12,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.85)',
+    backgroundColor: 'rgba(0,0,0,0.7)',
     paddingVertical: 6,
     paddingHorizontal: 10,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: THEME.gold,
+    borderColor: THEME.goldDim,
   },
   badgeText: {
     color: THEME.gold,
@@ -226,39 +209,20 @@ const styles = StyleSheet.create({
       position: 'absolute',
       top: 10,
       right: 10,
-      backgroundColor: 'rgba(0,0,0,0.6)', // Círculo oscuro semitransparente
+      backgroundColor: 'rgba(0,0,0,0.6)', 
       width: 36,
       height: 36,
       borderRadius: 18,
       justifyContent: 'center',
       alignItems: 'center',
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.1)'
-  },
-
-  // Badge Créditos (Abajo Derecha)
-  creditBadge: {
-    position: 'absolute',
-    bottom: 8,
-    right: 8,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)', 
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    maxWidth: '65%', 
-    borderWidth: 0.5,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  creditText: {
-    color: '#E0E0E0', 
-    fontSize: 9,      
-    fontWeight: '600',
+      borderColor: 'rgba(255,255,255,0.2)'
   },
 
   // Info
   infoContainer: {
     padding: 16,
-    backgroundColor: THEME.cardBg,
+    backgroundColor: THEME.card, // 💡 Usando THEME.card
   },
   title: {
     fontSize: 20,
@@ -287,7 +251,7 @@ const styles = StyleSheet.create({
   },
   description: {
     fontSize: 13,
-    color: '#888',
+    color: THEME.subText, // 💡 Ya no es un gris harcodeado
     lineHeight: 18,
     marginBottom: 12,
   },
