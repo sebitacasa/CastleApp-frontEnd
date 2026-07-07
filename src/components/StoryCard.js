@@ -10,7 +10,6 @@ import { FavoritesContext } from '../context/FavoritesContext';
 import { APP_PALETTE as THEME } from '../theme/colors';
 
 const API_BASE = 'https://castleapp-backend-production.up.railway.app';
-const BACKUP_URL = 'https://images.pexels.com/photos/2422265/pexels-photo-2422265.jpeg?auto=compress&cs=tinysrgb&w=800';
 
 const StoryCard = memo(({ item, navigation }) => {
   const [isLoaded, setIsLoaded] = useState(false);
@@ -77,25 +76,21 @@ const StoryCard = memo(({ item, navigation }) => {
     >
       {/* 1. SECCIÓN DE IMAGEN */}
       <View style={styles.imageContainer}>
-        {/* A. Imagen de Respaldo */}
-        <Image 
-          source={{ uri: BACKUP_URL }} 
-          style={styles.cardImagePlaceholder} 
-          resizeMode="cover"
-        />
-        
-        {/* B. Imagen Real */}
-        {finalUrl && (
-            <Image 
-              source={{ uri: finalUrl }} 
-              style={[styles.cardImage, { opacity: isLoaded ? 1 : 0 }]} 
-              onLoad={() => setIsLoaded(true)}
-              resizeMode="cover"
-            />
+        {finalUrl ? (
+          <Image
+            source={{ uri: finalUrl }}
+            style={[styles.cardImage, { opacity: isLoaded ? 1 : 0 }]}
+            onLoad={() => setIsLoaded(true)}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.noPhotoPlaceholder}>
+            <MaterialCommunityIcons name="image-off-outline" size={32} color={THEME.border} />
+          </View>
         )}
-        
-        {/* C. Gradiente Oscuro (Overlay) */}
-        <View style={styles.imageOverlay} />
+
+        {/* Overlay solo cuando hay foto */}
+        {finalUrl && <View style={styles.imageOverlay} />}
 
         {/* D. Badge fuente de imagen (Bottom-Left) */}
         {imageSourceLabel && (
@@ -186,9 +181,11 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.border, // ✅ AHORA ES UN GRIS PIEDRA SUAVE
     position: 'relative', 
   },
-  cardImagePlaceholder: {
+  noPhotoPlaceholder: {
     ...StyleSheet.absoluteFillObject,
-    opacity: 0.3,
+    backgroundColor: THEME.card,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   cardImage: {
     ...StyleSheet.absoluteFillObject,

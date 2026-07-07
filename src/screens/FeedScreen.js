@@ -379,13 +379,10 @@ export default function FeedScreen() {
   };
 
   const renderItem = useMemo(() => ({ item }) => {
-      const fallbackImage = CATEGORY_DEFAULTS[item.category] || CATEGORY_DEFAULTS['Others'];
-      const itemToRender = { ...item, image_url: item.image_url || fallbackImage };
-      
       return (
         <View style={{ marginBottom: 20 }}>
             <View>
-                <StoryCard item={itemToRender} navigation={navigation} />
+                <StoryCard item={item} navigation={navigation} />
                 {item.source === 'db' && (
                     <View style={localStyles.communityBadge}>
                         <MaterialCommunityIcons name="crown" size={14} color="#000" style={{ marginRight: 4 }} />
