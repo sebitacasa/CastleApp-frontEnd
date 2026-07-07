@@ -244,6 +244,7 @@ export default function FeedScreen() {
       if (selectedCategory !== 'All' && selectedCategory !== 'Others') {
           url += `&category=${encodeURIComponent(selectedCategory)}`;
       }
+      if (isRefresh) url += '&refresh=1';
 
       const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 15000));
       const response = await Promise.race([fetch(url), timeoutPromise]);
