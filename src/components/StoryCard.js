@@ -30,6 +30,17 @@ const StoryCard = memo(({ item, navigation }) => {
     return processed;
   }, [item.image_url, item.images]);
 
+  const imageSourceLabel = useMemo(() => {
+    if (item.source === 'db') return null; // "COMMUNITY GEM" badge ya identifica estas fotos
+    if (item.image_source === 'google') return 'Google';
+    if (item.image_source === 'wikipedia') return 'Wikipedia';
+    const url = finalUrl || '';
+    if (url.includes('places.googleapis.com')) return 'Google';
+    if (url.includes('wikimedia.org')) return 'Wikipedia';
+    if (url.includes('unsplash.com')) return 'Unsplash';
+    return null;
+  }, [item.image_source, item.source, finalUrl]);
+
   const handlePress = () => {
     navigation.navigate('Detail', { locationData: item });
   };
@@ -86,7 +97,14 @@ const StoryCard = memo(({ item, navigation }) => {
         {/* C. Gradiente Oscuro (Overlay) */}
         <View style={styles.imageOverlay} />
 
-        {/* D. Badge de Categoría (Top-Left) */}
+        {/* D. Badge fuente de imagen (Bottom-Left) */}
+        {imageSourceLabel && (
+          <View style={styles.sourceTag}>
+            <Text style={styles.sourceTagText}>{imageSourceLabel}</Text>
+          </View>
+        )}
+
+        {/* E. Badge de Categoría (Top-Left) */}
         <View style={styles.badge}>
           <MaterialCommunityIcons name="bookmark" size={12} color={THEME.gold} style={{marginRight: 4}} />
           <Text style={styles.badgeText}>
@@ -94,7 +112,7 @@ const StoryCard = memo(({ item, navigation }) => {
           </Text>
         </View>
 
-        {/* E. 🆕 BOTÓN DE FAVORITOS (Top-Right) */}
+        {/* F. BOTÓN DE FAVORITOS (Top-Right) */}
         <TouchableOpacity 
             style={styles.favoriteBtn} 
             onPress={handleFavoritePress}
@@ -204,7 +222,22 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
 
-  // 🆕 Botón Favorito (Arriba Derecha)
+  sourceTag: {
+    position: 'absolute',
+    bottom: 8,
+    left: 10,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 4,
+  },
+  sourceTagText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 9,
+    letterSpacing: 0.3,
+  },
+
+  // Botón Favorito (Arriba Derecha)
   favoriteBtn: {
       position: 'absolute',
       top: 10,

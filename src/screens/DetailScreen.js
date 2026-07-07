@@ -457,6 +457,26 @@ export default function DetailScreen({ route, navigation }) {
               ))}
             </View>
           )}
+
+          {/* Atribución de fuente de imagen */}
+          {locationData.image_source === 'google' && (
+            <View style={styles.photoCredit}>
+              <Ionicons name="logo-google" size={10} color="rgba(255,255,255,0.7)" />
+              <Text style={styles.photoCreditText}>Photo via Google Maps</Text>
+            </View>
+          )}
+          {locationData.image_source === 'wikipedia' && (
+            <View style={styles.photoCredit}>
+              <MaterialCommunityIcons name="wikipedia" size={10} color="rgba(255,255,255,0.7)" />
+              <Text style={styles.photoCreditText}>Photo: Wikimedia Commons (CC BY-SA)</Text>
+            </View>
+          )}
+          {locationData.source === 'db' && (
+            <View style={styles.photoCredit}>
+              <Ionicons name="person-outline" size={10} color="rgba(255,255,255,0.7)" />
+              <Text style={styles.photoCreditText}>Community photo</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.contentContainer}>
@@ -637,10 +657,23 @@ const styles = StyleSheet.create({
 
   pagination: {
     position: 'absolute',
-    bottom: 40, 
+    bottom: 40,
     width: '100%',
     flexDirection: 'row',
     justifyContent: 'center',
+  },
+  photoCredit: {
+    position: 'absolute',
+    bottom: 10,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  photoCreditText: {
+    fontSize: 9,
+    color: 'rgba(255,255,255,0.7)',
+    letterSpacing: 0.2,
   },
   dot: {
     width: 6,

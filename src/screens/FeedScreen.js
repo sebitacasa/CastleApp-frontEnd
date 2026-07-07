@@ -6,13 +6,14 @@ import {
 } from 'react-native';
 
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { AuthContext } from '../context/AuthContext';
 import StoryCard from '../components/StoryCard';
-import CitySearch from '../components/CitySearch'; 
+import CitySearch from '../components/CitySearch';
+import Footer from '../components/Footer';
 import { APP_PALETTE as THEME } from '../theme/colors';
 
 const API_BASE = 'https://castleapp-backend-production.up.railway.app';
@@ -118,20 +119,10 @@ export default function FeedScreen() {
   useEffect(() => {
     (async () => {
       let { status } = await Location.requestForegroundPermissionsAsync();
-      
+
       if (status !== 'granted') {
           Alert.alert('Permission denied', 'We need your location to show historic places around you.');
           return;
-      }
-
-      const lastKnown = await Location.getLastKnownPositionAsync({});
-      if (lastKnown) {
-          setActiveLocation({ 
-              lat: lastKnown.coords.latitude, 
-              lon: lastKnown.coords.longitude, 
-              label: "Current Location", 
-              isManual: false 
-          });
       }
 
       try {
@@ -139,29 +130,26 @@ export default function FeedScreen() {
               Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
               new Promise((_, reject) => setTimeout(() => reject(new Error("GPS Timeout")), 5000))
           ]);
-
-          setActiveLocation(prev => {
-              if (prev?.isManual) return prev;
-              return { 
-                  lat: freshLoc.coords.latitude, 
-                  lon: freshLoc.coords.longitude, 
-                  label: "Current Location", 
-                  isManual: false 
-              };
+          setActiveLocation({
+              lat: freshLoc.coords.latitude,
+              lon: freshLoc.coords.longitude,
+              label: "Current Location",
+              isManual: false
           });
       } catch (error) {
-          console.log("⚠️ GPS Error/Timeout (Usando LastKnown o Default):", error);
+          console.log("⚠️ GPS Error/Timeout, usando lastKnown:", error);
+          const lastKnown = await Location.getLastKnownPositionAsync({});
+          if (lastKnown) {
+              setActiveLocation({
+                  lat: lastKnown.coords.latitude,
+                  lon: lastKnown.coords.longitude,
+                  label: "Current Location",
+                  isManual: false
+              });
+          }
       }
     })();
   }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      if (activeLocation && locations.length === 0) {
-        loadData(1, false, activeLocation, true);
-      }
-    }, [activeLocation, selectedCategory])
-  );
 
   useEffect(() => {
       if (activeLocation) {
@@ -531,7 +519,11 @@ export default function FeedScreen() {
                   refreshControl={
                       <RefreshControl refreshing={refreshing} onRefresh={() => loadData(1, true)} colors={[THEME.bg]} tintColor={THEME.gold} progressViewOffset={HEADER_HEIGHT + 20} />
                   }
-                  ListFooterComponent={() => loadingMore && <ActivityIndicator style={{ margin: 20 }} color={THEME.gold} />}
+                  ListFooterComponent={() => {
+                    if (loadingMore) return <ActivityIndicator style={{ margin: 20 }} color={THEME.gold} />;
+                    if (!hasMore && locations.length > 0) return <Footer />;
+                    return null;
+                  }}
               />
           )}
       </View>
