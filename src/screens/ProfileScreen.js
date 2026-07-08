@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -9,7 +9,11 @@ import {
   ScrollView,
   ImageBackground,
   Platform,
-  Alert
+  Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
+  ActivityIndicator,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios'; 
@@ -30,12 +34,71 @@ const ProfileScreen = ({ navigation }) => {
   const { userInfo, logout, userToken } = useContext(AuthContext);
   const [conquestRank, setConquestRank] = useState(null);
 
+  // Username state
+  const [username, setUsername] = useState(null);
+  const [usernameModalVisible, setUsernameModalVisible] = useState(false);
+  const [usernameInput, setUsernameInput] = useState('');
+  const [usernameAvailable, setUsernameAvailable] = useState(null); // null | true | false
+  const [usernameChecking, setUsernameChecking] = useState(false);
+  const [usernameSaving, setUsernameSaving] = useState(false);
+  const checkTimer = useRef(null);
+
+  const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
+
   useEffect(() => {
     if (!userToken) return;
     axios.get(`${API}/api/conquests/rank`, { headers: { Authorization: `Bearer ${userToken}` } })
       .then(r => setConquestRank(r.data))
       .catch(() => {});
+    axios.get(`${API}/api/username`, { headers: { Authorization: `Bearer ${userToken}` } })
+      .then(r => setUsername(r.data.username || null))
+      .catch(() => {});
   }, [userToken]);
+
+  // Debounced username availability check
+  useEffect(() => {
+    clearTimeout(checkTimer.current);
+    if (!usernameModalVisible) return;
+    const val = usernameInput.trim();
+    if (!val || val === username) { setUsernameAvailable(null); return; }
+    if (!USERNAME_REGEX.test(val)) { setUsernameAvailable(false); return; }
+    setUsernameChecking(true);
+    checkTimer.current = setTimeout(async () => {
+      try {
+        const { data } = await axios.get(
+          `${API}/api/username/check?username=${encodeURIComponent(val)}`,
+          { headers: { Authorization: `Bearer ${userToken}` } }
+        );
+        setUsernameAvailable(data.available);
+      } catch { setUsernameAvailable(null); }
+      finally { setUsernameChecking(false); }
+    }, 450);
+    return () => clearTimeout(checkTimer.current);
+  }, [usernameInput, usernameModalVisible]);
+
+  const openUsernameModal = () => {
+    setUsernameInput(username || '');
+    setUsernameAvailable(null);
+    setUsernameModalVisible(true);
+  };
+
+  const saveUsername = async () => {
+    const val = usernameInput.trim();
+    if (!USERNAME_REGEX.test(val)) return;
+    setUsernameSaving(true);
+    try {
+      const { data } = await axios.put(
+        `${API}/api/username`,
+        { username: val },
+        { headers: { Authorization: `Bearer ${userToken}` } }
+      );
+      setUsername(data.username);
+      setUsernameModalVisible(false);
+    } catch (e) {
+      const msg = e.response?.data?.error === 'taken' ? 'Username already taken.' : 'Could not save username.';
+      Alert.alert('Error', msg);
+    } finally { setUsernameSaving(false); }
+  };
 
   const userPhoto = 
     userInfo?.picture || 
@@ -125,6 +188,15 @@ const ProfileScreen = ({ navigation }) => {
             </View>
             
             <Text style={styles.nameText}>{userName}</Text>
+
+            {/* Username row */}
+            <TouchableOpacity style={styles.usernameRow} onPress={openUsernameModal}>
+              <Text style={styles.usernameText}>
+                {username ? `@${username}` : t('profile.setUsername')}
+              </Text>
+              <Ionicons name="pencil-outline" size={13} color={THEME.gold} style={{ marginLeft: 5 }} />
+            </TouchableOpacity>
+
             <Text style={styles.locationText}>
                 <MaterialCommunityIcons name="compass-outline" size={14} color={THEME.gold} /> {t('profile.historySeeker')}
             </Text>
@@ -179,6 +251,12 @@ const ProfileScreen = ({ navigation }) => {
         {/* --- 3. MENÚ DE OPCIONES --- */}
         <View style={styles.menuContainer}>
             <MenuOption
+                icon="people-outline"
+                label={t('profile.friends')}
+                color={THEME.text}
+                onPress={() => navigation.navigate('Friends')}
+            />
+            <MenuOption
                 icon="map-outline"
                 label={t('profile.myDiscoveries')}
                 color={THEME.text}
@@ -221,6 +299,74 @@ const ProfileScreen = ({ navigation }) => {
 
         <Footer />
       </ScrollView>
+
+      {/* Username edit modal */}
+      <Modal
+        visible={usernameModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setUsernameModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.modalOverlay}
+        >
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>{t('profile.editUsername')}</Text>
+            <Text style={styles.modalSub}>{t('profile.usernameSub')}</Text>
+
+            <View style={styles.inputRow}>
+              <Text style={styles.atSign}>@</Text>
+              <TextInput
+                style={styles.usernameModalInput}
+                value={usernameInput}
+                onChangeText={v => { setUsernameInput(v); setUsernameAvailable(null); }}
+                placeholder="your_username"
+                placeholderTextColor={THEME.subText}
+                autoCapitalize="none"
+                autoCorrect={false}
+                maxLength={20}
+              />
+              <View style={{ width: 22, alignItems: 'center' }}>
+                {usernameChecking ? (
+                  <ActivityIndicator size="small" color={THEME.gold} />
+                ) : usernameAvailable === true ? (
+                  <Ionicons name="checkmark-circle" size={20} color="#2E7D32" />
+                ) : usernameAvailable === false ? (
+                  <Ionicons name="close-circle" size={20} color="#C0392B" />
+                ) : null}
+              </View>
+            </View>
+
+            {/* Hint */}
+            {usernameInput.trim().length > 0 && !USERNAME_REGEX.test(usernameInput.trim()) && (
+              <Text style={styles.hintError}>{t('profile.usernameHint')}</Text>
+            )}
+            {usernameAvailable === true && (
+              <Text style={styles.hintOk}>{t('profile.usernameAvailable')}</Text>
+            )}
+            {usernameAvailable === false && USERNAME_REGEX.test(usernameInput.trim()) && (
+              <Text style={styles.hintError}>{t('profile.usernameTaken')}</Text>
+            )}
+
+            <View style={styles.modalBtns}>
+              <TouchableOpacity onPress={() => setUsernameModalVisible(false)} style={styles.modalCancelBtn}>
+                <Text style={styles.modalCancelText}>{t('profile.cancel')}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={saveUsername}
+                disabled={!usernameAvailable || usernameSaving || usernameInput.trim() === username}
+                style={[styles.modalSaveBtn, (!usernameAvailable || usernameInput.trim() === username) && { opacity: 0.4 }]}
+              >
+                {usernameSaving
+                  ? <ActivityIndicator size="small" color={THEME.bg} />
+                  : <Text style={styles.modalSaveText}>{t('profile.save')}</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </View>
   );
 };
@@ -326,6 +472,44 @@ const styles = StyleSheet.create({
   menuItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 10 },
   menuBorder: { borderBottomWidth: 1, borderBottomColor: THEME.border }, // Borde separador
   menuText: { fontSize: 16, fontWeight: '500' },
+
+  usernameRow: {
+    flexDirection: 'row', alignItems: 'center', marginBottom: 4, marginTop: 2,
+  },
+  usernameText: {
+    fontSize: 13, color: THEME.gold, fontWeight: '600',
+  },
+
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end',
+  },
+  modalCard: {
+    backgroundColor: THEME.bg, borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    padding: 28, paddingBottom: Platform.OS === 'ios' ? 40 : 28,
+    borderTopWidth: 1, borderColor: THEME.border,
+  },
+  modalTitle: {
+    fontSize: 18, fontWeight: 'bold', color: THEME.text, marginBottom: 4,
+    fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif',
+  },
+  modalSub: { fontSize: 12, color: THEME.subText, marginBottom: 20 },
+  inputRow: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: THEME.card, borderRadius: 12,
+    borderWidth: 1, borderColor: THEME.border,
+    paddingHorizontal: 14, paddingVertical: 12, marginBottom: 8,
+  },
+  atSign: { fontSize: 18, color: THEME.gold, fontWeight: 'bold', marginRight: 4 },
+  usernameModalInput: { flex: 1, color: THEME.text, fontSize: 16 },
+  hintOk: { fontSize: 12, color: '#2E7D32', marginBottom: 12 },
+  hintError: { fontSize: 12, color: '#C0392B', marginBottom: 12 },
+  modalBtns: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: 16, gap: 12 },
+  modalCancelBtn: { paddingVertical: 10, paddingHorizontal: 20 },
+  modalCancelText: { color: THEME.subText, fontWeight: '600', fontSize: 15 },
+  modalSaveBtn: {
+    backgroundColor: THEME.gold, paddingVertical: 10, paddingHorizontal: 24, borderRadius: 20,
+  },
+  modalSaveText: { color: THEME.bg, fontWeight: 'bold', fontSize: 15 },
 
   rankCard: {
     flexDirection: 'row', alignItems: 'center',

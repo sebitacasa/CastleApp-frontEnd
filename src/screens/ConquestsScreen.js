@@ -34,9 +34,12 @@ function formatDate(iso) {
   return new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export default function ConquestsScreen({ navigation }) {
+export default function ConquestsScreen({ navigation, route }) {
   const { userToken } = useContext(AuthContext);
   const { t } = useTranslation();
+  const friendId = route?.params?.friendId || null;
+  const friendName = route?.params?.friendName || null;
+
   const [conquests, setConquests] = useState([]);
   const [total, setTotal] = useState(0);
   const [rank, setRank] = useState(getRank(0));
@@ -48,7 +51,10 @@ export default function ConquestsScreen({ navigation }) {
     if (!silent) setLoading(true);
     setError(null);
     try {
-      const { data } = await axios.get(`${API}/api/conquests/mine`, {
+      const url = friendId
+        ? `${API}/api/friends/${friendId}/conquests`
+        : `${API}/api/conquests/mine`;
+      const { data } = await axios.get(url, {
         headers: { Authorization: `Bearer ${userToken}` },
       });
       setConquests(data.conquests || []);
@@ -60,7 +66,7 @@ export default function ConquestsScreen({ navigation }) {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [userToken]);
+  }, [userToken, friendId]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -121,7 +127,7 @@ export default function ConquestsScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
           <Ionicons name="arrow-back" size={24} color={THEME.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Conquests</Text>
+        <Text style={styles.headerTitle}>{friendName ? `${friendName}'s Conquests` : 'My Conquests'}</Text>
         <View style={styles.iconBtn} />
       </View>
 

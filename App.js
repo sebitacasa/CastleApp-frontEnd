@@ -37,6 +37,7 @@ import ProfileScreen from './src/screens/ProfileScreen';
 import SearchScreen from './src/screens/SearchScreen';
 import MyDiscoveriesScreen from './src/screens/MyDiscoveriesScreen';
 import ConquestsScreen from './src/screens/ConquestsScreen';
+import FriendsScreen from './src/screens/FriendsScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator(); 
@@ -161,6 +162,7 @@ const AppNavigation = () => {
       <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
       <Stack.Screen name="MyDiscoveries" component={MyDiscoveriesScreen} />
       <Stack.Screen name="Conquests" component={ConquestsScreen} />
+      <Stack.Screen name="Friends" component={FriendsScreen} />
       <Stack.Screen 
         name="Favorites" 
         component={FavoritesScreen} 
