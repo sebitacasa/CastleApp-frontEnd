@@ -34,6 +34,7 @@ import FavoritesScreen from './src/screens/FavoritesScreen';
 import HistoryMapScreen from './src/screens/HistoryMapScreen';
 import ProfileScreen from './src/screens/ProfileScreen';
 import SearchScreen from './src/screens/SearchScreen';
+import MyDiscoveriesScreen from './src/screens/MyDiscoveriesScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator(); 
@@ -156,6 +157,7 @@ const AppNavigation = () => {
       <Stack.Screen name="Register" component={RegisterScreen} />
       
       <Stack.Screen name="ProfileScreen" component={ProfileScreen} />
+      <Stack.Screen name="MyDiscoveries" component={MyDiscoveriesScreen} />
       <Stack.Screen 
         name="Favorites" 
         component={FavoritesScreen} 

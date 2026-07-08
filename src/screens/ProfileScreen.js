@@ -152,11 +152,11 @@ const ProfileScreen = ({ navigation }) => {
 
         {/* --- 3. MENÚ DE OPCIONES --- */}
         <View style={styles.menuContainer}>
-            <MenuOption 
-                icon="map-outline" 
-                label="My Discoveries" 
+            <MenuOption
+                icon="map-outline"
+                label="My Discoveries"
                 color={THEME.text}
-                onPress={() => {}} 
+                onPress={() => navigation.navigate('MyDiscoveries')}
             />
             <MenuOption 
                 icon="heart-outline" 
