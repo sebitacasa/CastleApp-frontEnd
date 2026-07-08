@@ -9,12 +9,12 @@ import {
   ScrollView,
   ImageBackground,
   Platform,
-  Alert,
-  Linking
+  Alert
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios'; 
 import { AuthContext } from '../context/AuthContext';
+import Footer from '../components/Footer';
 
 // 👇 IMPORTAMOS TU PALETA GLOBAL
 import { APP_PALETTE as THEME } from '../theme/colors';
@@ -172,19 +172,6 @@ const ProfileScreen = ({ navigation }) => {
             />
             
             <MenuOption
-                icon="shield-checkmark-outline"
-                label="Privacy Policy"
-                color={THEME.text}
-                onPress={() => Linking.openURL('https://sebitacasa.github.io/CastleApp-backend/privacy')}
-            />
-            <MenuOption
-                icon="document-text-outline"
-                label="Terms of Use"
-                color={THEME.text}
-                onPress={() => Linking.openURL('https://sebitacasa.github.io/CastleApp-backend/terms')}
-            />
-
-            <MenuOption
                 icon="log-out-outline"
                 label="Log Out"
                 color={THEME.text}
@@ -200,6 +187,7 @@ const ProfileScreen = ({ navigation }) => {
             />
         </View>
 
+        <Footer />
       </ScrollView>
     </View>
   );
