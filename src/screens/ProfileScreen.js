@@ -1,15 +1,16 @@
 import React, { useContext } from 'react';
-import { 
-  View, 
-  Text, 
-  Image, 
-  TouchableOpacity, 
-  StyleSheet, 
-  StatusBar, 
-  ScrollView, 
+import {
+  View,
+  Text,
+  Image,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
+  ScrollView,
   ImageBackground,
   Platform,
-  Alert
+  Alert,
+  Linking
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios'; 
@@ -170,11 +171,24 @@ const ProfileScreen = ({ navigation }) => {
                 onPress={() => {}} 
             />
             
-            <MenuOption 
-                icon="log-out-outline" 
-                label="Log Out" 
+            <MenuOption
+                icon="shield-checkmark-outline"
+                label="Privacy Policy"
                 color={THEME.text}
-                onPress={logout} 
+                onPress={() => Linking.openURL('https://sebitacasa.github.io/CastleApp-backend/privacy')}
+            />
+            <MenuOption
+                icon="document-text-outline"
+                label="Terms of Use"
+                color={THEME.text}
+                onPress={() => Linking.openURL('https://sebitacasa.github.io/CastleApp-backend/terms')}
+            />
+
+            <MenuOption
+                icon="log-out-outline"
+                label="Log Out"
+                color={THEME.text}
+                onPress={logout}
             />
 
             <MenuOption 
