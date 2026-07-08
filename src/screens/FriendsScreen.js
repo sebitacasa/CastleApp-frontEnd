@@ -45,9 +45,9 @@ function Avatar({ uri, name, size = 44 }) {
   );
 }
 
-export default function FriendsScreen({ navigation }) {
+export default function FriendsScreen({ navigation, route }) {
   const { userToken } = useContext(AuthContext);
-  const [tab, setTab] = useState('friends'); // 'friends' | 'requests'
+  const [tab, setTab] = useState(route?.params?.initialTab || 'friends');
   const [friends, setFriends] = useState([]);
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);

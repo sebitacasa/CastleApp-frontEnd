@@ -22,7 +22,9 @@ export default {
       },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
-        "ACCESS_FINE_LOCATION"
+        "ACCESS_FINE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ],
       "config": {
         "googleMaps": {
@@ -35,6 +37,15 @@ export default {
     },
     "plugins": [
       "expo-localization",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/Images/brujula.png",
+          "color": "#C9A84C",
+          "androidMode": "default",
+          "androidCollapsedTitle": "Echoes&Paths"
+        }
+      ],
       "expo-font",
       "expo-web-browser",
       "@react-native-google-signin/google-signin",

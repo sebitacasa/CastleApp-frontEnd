@@ -1,6 +1,6 @@
 import 'react-native-gesture-handler';
 import './src/i18n'; // must be imported before any screen
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -8,7 +8,18 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Notifications from 'expo-notifications';
 import { useFonts, BerkshireSwash_400Regular } from '@expo-google-fonts/berkshire-swash';
+import { registerPushToken } from './src/utils/notifications';
+
+// Show notifications when the app is in the foreground
+Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+        shouldShowAlert: true,
+        shouldPlaySound: true,
+        shouldSetBadge: true,
+    }),
+});
 
 import { AuthProvider, AuthContext } from './src/context/AuthContext';
 import { FavoritesProvider } from './src/context/FavoritesContext';
@@ -130,18 +141,28 @@ const MainTabs = ({ navigation }) => {
 };
 
 // --- 2. MAIN STACK (The Container) ---
-const AppNavigation = () => {
-  const { isLoading } = useContext(AuthContext);
+const AppNavigation = ({ navigationRef }) => {
+  const { isLoading, userToken } = useContext(AuthContext);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
   const [fontsLoaded] = useFonts({ BerkshireSwash_400Regular });
+  const tokenRegistered = useRef(false);
 
   useEffect(() => {
-    // 💡 El splash nativo ya muestra la misma brújula sobre el mismo fondo,
-    // así que ocultarlo apenas montamos AnimatedSplash es una transición invisible.
     SplashScreen.hideAsync();
     const timer = setTimeout(() => setMinTimeElapsed(true), MIN_SPLASH_DURATION);
     return () => clearTimeout(timer);
   }, []);
+
+  // Register push token once after login
+  useEffect(() => {
+    if (userToken && !tokenRegistered.current) {
+      tokenRegistered.current = true;
+      registerPushToken(userToken);
+    }
+    if (!userToken) {
+      tokenRegistered.current = false;
+    }
+  }, [userToken]);
 
   if (isLoading || !minTimeElapsed || !fontsLoaded) {
     return <AnimatedSplash />;
@@ -186,15 +207,33 @@ const AppNavigation = () => {
 };
 
 export default function App() {
+  const navigationRef = useRef(null);
+
+  // Navigate to the right screen when user taps a notification
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (!data?.screen) return;
+      // Wait until navigation is ready
+      const tryNavigate = () => {
+        if (navigationRef.current?.isReady()) {
+          navigationRef.current.navigate(data.screen, data.tab ? { initialTab: data.tab } : undefined);
+        } else {
+          setTimeout(tryNavigate, 100);
+        }
+      };
+      tryNavigate();
+    });
+    return () => sub.remove();
+  }, []);
+
   return (
-    // 💡 4. ENVOLVEMOS TODA LA APP EN TU NUEVO CONTEXTO DE TEMA
     <ThemeContext.Provider value={APP_PALETTE}>
       <AuthProvider>
         <FavoritesProvider>
-          <NavigationContainer linking={linking}>
-            {/* 💡 BARRA DE ESTADO ACTUALIZADA PARA FONDOS CLAROS (letras oscuras) */}
+          <NavigationContainer ref={navigationRef} linking={linking}>
             <StatusBar barStyle="dark-content" backgroundColor={APP_PALETTE.bg} />
-            <AppNavigation />
+            <AppNavigation navigationRef={navigationRef} />
           </NavigationContainer>
         </FavoritesProvider>
       </AuthProvider>
