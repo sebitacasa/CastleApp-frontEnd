@@ -21,6 +21,7 @@ import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import axios from "axios";
 import * as ImagePicker from 'expo-image-picker';
+import * as Location from 'expo-location';
 
 import { AuthContext } from '../context/AuthContext';
 import { FavoritesContext } from '../context/FavoritesContext';
@@ -65,6 +66,10 @@ export default function DetailScreen({ route, navigation }) {
   const [infoModalVisible, setInfoModalVisible] = useState(false);
   const [infoTextInput, setInfoTextInput] = useState('');
   const [submittingContribution, setSubmittingContribution] = useState(false);
+
+  // ─── CONQUESTS ───────────────────────────────────────────────────────────────
+  const [conquered, setConquered] = useState(false);
+  const [conquestLoading, setConquestLoading] = useState(false);
 
   const handleToggleFav = () => {
     if (!isLoggedIn) {
@@ -161,6 +166,68 @@ export default function DetailScreen({ route, navigation }) {
       android: `geo:0,0?q=${latLng}(${label})`
     });
     Linking.openURL(url).catch(() => Alert.alert("Error", "No se pudo abrir mapas."));
+  };
+
+  // ─── Check if already conquered ──────────────────────────────────────────────
+  useEffect(() => {
+      if (!isLoggedIn || !userToken) return;
+      const id = locationData.google_place_id || locationData.id;
+      if (!id) return;
+      const param = locationData.source === 'google' || locationData.google_place_id
+          ? `google_place_id=${locationData.google_place_id}`
+          : `location_id=${locationData.id}`;
+      axios.get(`${API_BASE}/api/conquests/check?${param}`, {
+          headers: { Authorization: `Bearer ${userToken}` },
+      }).then(r => setConquered(r.data.conquered)).catch(() => {});
+  }, [locationData, userToken, isLoggedIn]);
+
+  const handleConquer = async () => {
+      if (!isLoggedIn) { navigation.navigate('LoginScreen'); return; }
+      setConquestLoading(true);
+      try {
+          const { status } = await Location.requestForegroundPermissionsAsync();
+          if (status !== 'granted') {
+              Alert.alert('Permission denied', 'Location access is required to conquer places.');
+              return;
+          }
+          const pos = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+          const body = {
+              place_name: locationData.name || '',
+              place_lat: lat,
+              place_lon: lon,
+              user_lat: pos.coords.latitude,
+              user_lon: pos.coords.longitude,
+              image_url: locationData.image_url || null,
+              category: locationData.category || null,
+          };
+          if (locationData.source === 'google' || locationData.google_place_id) {
+              body.google_place_id = locationData.google_place_id;
+          } else {
+              body.location_id = locationData.id;
+          }
+          const { data } = await axios.post(`${API_BASE}/api/conquests`, body, {
+              headers: { Authorization: `Bearer ${userToken}` },
+          });
+          setConquered(true);
+          const { rank, total } = data;
+          Alert.alert(
+              `${rank.emoji} Conquered!`,
+              `${locationData.name} is yours!\n\n${rank.title} · ${total} ${total === 1 ? 'conquest' : 'conquests'}` +
+              (rank.next ? `\n${rank.nextCount - total} more to become ${rank.next}` : '\nMax rank reached! 👑'),
+          );
+      } catch (err) {
+          if (err.response?.data?.error === 'too_far') {
+              const dist = err.response.data.distance;
+              Alert.alert(
+                  'Too far away',
+                  `You are ${dist}m from this place. Get within 150m to conquer it.`,
+              );
+          } else {
+              Alert.alert('Error', 'Could not complete the conquest. Try again.');
+          }
+      } finally {
+          setConquestLoading(false);
+      }
   };
 
   // 💡 AUTO-CARGA SILENCIOSA
@@ -523,6 +590,22 @@ export default function DetailScreen({ route, navigation }) {
                 <Ionicons name="navigate" size={18} color={THEME.bg} style={{marginRight: 8}} />
                 <Text style={styles.directionsText}>NAVIGATE HERE</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.directionsButton, styles.conquerButton, conquered && styles.conquerButtonDone]}
+              onPress={conquered ? undefined : handleConquer}
+              activeOpacity={conquered ? 1 : 0.8}
+              disabled={conquestLoading}
+            >
+              {conquestLoading ? (
+                <ActivityIndicator size="small" color={THEME.bg} style={{marginRight: 8}} />
+              ) : (
+                <Text style={{fontSize: 16, marginRight: 8}}>{conquered ? '✓' : '⚔️'}</Text>
+              )}
+              <Text style={styles.directionsText}>
+                {conquered ? 'CONQUERED' : 'CONQUER THIS PLACE'}
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.divider} />
@@ -641,6 +724,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.2)',
   },
+  conquerButton: {
+    backgroundColor: '#8B1A1A',
+    marginTop: 10,
+  },
+  conquerButtonDone: {
+    backgroundColor: '#2E7D32',
+  },
+
   favButton: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 50 : 40,

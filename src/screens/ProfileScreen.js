@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -23,9 +23,19 @@ import { APP_PALETTE as THEME } from '../theme/colors';
 // 🏰 IMAGEN NUEVA: Un castillo épico/oscuro
 const UPLOAD_BG = 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?q=80&w=800&auto=format&fit=crop';
 
+const API = 'https://castleapp-backend-production.up.railway.app';
+
 const ProfileScreen = ({ navigation }) => {
   const { t } = useTranslation();
-  const { userInfo, logout } = useContext(AuthContext);
+  const { userInfo, logout, userToken } = useContext(AuthContext);
+  const [conquestRank, setConquestRank] = useState(null);
+
+  useEffect(() => {
+    if (!userToken) return;
+    axios.get(`${API}/api/conquests/rank`, { headers: { Authorization: `Bearer ${userToken}` } })
+      .then(r => setConquestRank(r.data))
+      .catch(() => {});
+  }, [userToken]);
 
   const userPhoto = 
     userInfo?.picture || 
@@ -120,7 +130,26 @@ const ProfileScreen = ({ navigation }) => {
             </Text>
         </View>
 
-        {/* --- 2. TARJETA HERO "SUBIR LUGAR" (CONTRIBUTE) --- */}
+        {/* --- 2. RANK CARD --- */}
+        {conquestRank && (
+          <TouchableOpacity
+            style={styles.rankCard}
+            activeOpacity={0.85}
+            onPress={() => navigation.navigate('Conquests')}
+          >
+            <Text style={styles.rankEmoji}>{conquestRank.rank?.emoji || '🌾'}</Text>
+            <View style={{ flex: 1, marginLeft: 14 }}>
+              <Text style={styles.rankTitle}>{conquestRank.rank?.title || 'Peasant'}</Text>
+              <Text style={styles.rankSub}>
+                {conquestRank.total} {conquestRank.total === 1 ? 'conquest' : 'conquests'}
+                {conquestRank.rank?.next ? ` · ${conquestRank.rank.nextCount - conquestRank.total} to ${conquestRank.rank.next}` : ' · Max rank! 👑'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={THEME.subText} />
+          </TouchableOpacity>
+        )}
+
+        {/* --- 3. TARJETA HERO "SUBIR LUGAR" (CONTRIBUTE) --- */}
         <View style={styles.sectionContainer}>
             <Text style={styles.sectionTitle}>{t('profile.contributeLegacy')}</Text>
             
@@ -154,6 +183,12 @@ const ProfileScreen = ({ navigation }) => {
                 label={t('profile.myDiscoveries')}
                 color={THEME.text}
                 onPress={() => navigation.navigate('MyDiscoveries')}
+            />
+            <MenuOption
+                icon="shield-outline"
+                label={t('profile.myConquests')}
+                color={THEME.text}
+                onPress={() => navigation.navigate('Conquests')}
             />
             <MenuOption 
                 icon="heart-outline" 
@@ -291,6 +326,16 @@ const styles = StyleSheet.create({
   menuItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 15, paddingHorizontal: 10 },
   menuBorder: { borderBottomWidth: 1, borderBottomColor: THEME.border }, // Borde separador
   menuText: { fontSize: 16, fontWeight: '500' },
+
+  rankCard: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: THEME.card, marginHorizontal: 20, marginBottom: 20,
+    borderRadius: 16, borderWidth: 1, borderColor: THEME.border,
+    padding: 16,
+  },
+  rankEmoji: { fontSize: 36 },
+  rankTitle: { fontSize: 18, fontWeight: 'bold', color: THEME.text, fontFamily: Platform.OS === 'ios' ? 'Didot' : 'serif' },
+  rankSub: { fontSize: 12, color: THEME.subText, marginTop: 2 },
 
   guestTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.text, marginTop: 20 },
   guestSub: { color: THEME.subText, marginTop: 10, textAlign: 'center', maxWidth: '70%', marginBottom: 30 },
