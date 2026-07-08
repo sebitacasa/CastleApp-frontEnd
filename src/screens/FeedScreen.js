@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback, useContext, useRef, useMemo } from 'react';
 import { 
-  View, Text, FlatList, ActivityIndicator, 
-  StatusBar, RefreshControl, TouchableOpacity, 
-  Animated, Image, StyleSheet, Dimensions, Platform, Alert
+  View, Text, FlatList, ActivityIndicator,
+  StatusBar, RefreshControl, TouchableOpacity,
+  Animated, Image, StyleSheet, Dimensions, Platform, Alert, Linking
 } from 'react-native';
 
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -570,6 +570,15 @@ export default function FeedScreen() {
                     <Text style={[localStyles.menuItemText, { color: THEME.gold, fontWeight: 'bold' }]}>Sign In / Register</Text>
                 </TouchableOpacity>
               )}
+              <View style={localStyles.separator} />
+              <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); Linking.openURL('https://sebitacasa.github.io/CastleApp-backend/privacy'); }}>
+                  <Ionicons name="shield-checkmark-outline" size={20} color={THEME.subText} />
+                  <Text style={[localStyles.menuItemText, { color: THEME.subText }]}>Privacy Policy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); Linking.openURL('https://sebitacasa.github.io/CastleApp-backend/terms'); }}>
+                  <Ionicons name="document-text-outline" size={20} color={THEME.subText} />
+                  <Text style={[localStyles.menuItemText, { color: THEME.subText }]}>Terms of Use</Text>
+              </TouchableOpacity>
           </View>
       )}
     </View>
