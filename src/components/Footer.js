@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, Linking, StyleSheet } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { useTranslation } from 'react-i18next';
 import { APP_PALETTE as THEME } from '../theme/colors';
 
 // TODO: Replace these placeholders with real hosted URLs before publishing to EU stores
@@ -11,6 +12,7 @@ const CONTACT_EMAIL = 'castleapp.tester@gmail.com';
 const open = (url) => Linking.openURL(url).catch(() => {});
 
 export default function Footer() {
+  const { t } = useTranslation();
   const year = new Date().getFullYear();
 
   return (
@@ -19,19 +21,19 @@ export default function Footer() {
       {/* Branding */}
       <MaterialCommunityIcons name="compass-outline" size={30} color={THEME.gold} />
       <Text style={styles.brand}>Echoes&Paths</Text>
-      <Text style={styles.tagline}>Discovering the past, one place at a time.</Text>
+      <Text style={styles.tagline}>{t('footer.tagline')}</Text>
 
       <View style={styles.divider} />
 
       {/* Data sources / attribution */}
-      <Text style={styles.sectionTitle}>DATA SOURCES</Text>
+      <Text style={styles.sectionTitle}>{t('footer.dataSources')}</Text>
 
       <View style={styles.row}>
         <Ionicons name="logo-google" size={13} color={THEME.subText} style={styles.icon} />
         <Text style={styles.attrText}>
-          Location data & photos:{' '}
+          {t('footer.googleAttr')}{' '}
           <Text style={styles.link} onPress={() => open('https://maps.google.com')}>
-            Powered by Google
+            {t('footer.poweredByGoogle')}
           </Text>
         </Text>
       </View>
@@ -39,9 +41,9 @@ export default function Footer() {
       <View style={styles.row}>
         <MaterialCommunityIcons name="wikipedia" size={13} color={THEME.subText} style={styles.icon} />
         <Text style={styles.attrText}>
-          Historical descriptions:{' '}
+          {t('footer.wikiAttr')}{' '}
           <Text style={styles.link} onPress={() => open('https://wikipedia.org')}>Wikipedia</Text>
-          {' '}under{' '}
+          {' '}{t('footer.wikiLicense')}{' '}
           <Text style={styles.link} onPress={() => open('https://creativecommons.org/licenses/by-sa/4.0/')}>
             CC BY-SA 4.0
           </Text>
@@ -51,7 +53,7 @@ export default function Footer() {
       <View style={styles.row}>
         <Ionicons name="image-outline" size={13} color={THEME.subText} style={styles.icon} />
         <Text style={styles.attrText}>
-          Default imagery:{' '}
+          {t('footer.defaultImagery')}{' '}
           <Text style={styles.link} onPress={() => open('https://unsplash.com')}>Unsplash</Text>
           {' '}·{' '}
           <Text style={styles.link} onPress={() => open('https://cloudinary.com')}>Cloudinary</Text>
@@ -61,40 +63,35 @@ export default function Footer() {
       <View style={styles.divider} />
 
       {/* GDPR / Privacy */}
-      <Text style={styles.sectionTitle}>YOUR PRIVACY (GDPR)</Text>
+      <Text style={styles.sectionTitle}>{t('footer.privacy')}</Text>
+
+      <Text style={styles.gdprText}>{t('footer.gdprText1')}</Text>
 
       <Text style={styles.gdprText}>
-        We collect your GPS location to show nearby historic sites, and your account info (name and email
-        via Google Sign-In). Any photos or descriptions you submit are stored linked to your account.
-      </Text>
-
-      <Text style={styles.gdprText}>
-        Under the EU General Data Protection Regulation you have the right to{' '}
-        <Text style={styles.bold}>access, rectify, export or delete</Text> your personal data at any time.
-        To exercise these rights contact:{' '}
+        {t('footer.gdprText2')}{' '}
+        <Text style={styles.bold}>{t('footer.gdprRights')}</Text>
+        {' '}{t('footer.gdprText3')}{' '}
         <Text style={styles.link} onPress={() => open(`mailto:${CONTACT_EMAIL}`)}>
           {CONTACT_EMAIL}
         </Text>
       </Text>
 
-      <Text style={styles.gdprText}>
-        You may also lodge a complaint with your national data protection authority (e.g. CNIL, BfDI, AEPD, Garante).
-      </Text>
+      <Text style={styles.gdprText}>{t('footer.gdprText4')}</Text>
 
       <View style={styles.legalRow}>
         <TouchableOpacity onPress={() => open(PRIVACY_URL)} style={styles.legalBtn}>
-          <Text style={styles.legalBtnText}>Privacy Policy</Text>
+          <Text style={styles.legalBtnText}>{t('footer.privacyPolicy')}</Text>
         </TouchableOpacity>
         <View style={styles.dot} />
         <TouchableOpacity onPress={() => open(TERMS_URL)} style={styles.legalBtn}>
-          <Text style={styles.legalBtnText}>Terms of Use</Text>
+          <Text style={styles.legalBtnText}>{t('footer.termsOfUse')}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.divider} />
 
-      <Text style={styles.copyright}>© {year} Echoes&Paths. All rights reserved.</Text>
-      <Text style={styles.version}>GDPR-compliant · EU Digital Services Act</Text>
+      <Text style={styles.copyright}>© {year} Echoes&Paths. {t('footer.rights')}</Text>
+      <Text style={styles.version}>{t('footer.compliance')}</Text>
 
     </View>
   );

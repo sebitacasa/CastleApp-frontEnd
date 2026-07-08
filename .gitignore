@@ -34,3 +34,5 @@ yarn-error.*
 .DS_Store
 *.pem
 .vscode/
+credentials.json
+credentials/

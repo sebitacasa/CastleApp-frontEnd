@@ -1,4 +1,5 @@
 import 'react-native-gesture-handler';
+import './src/i18n'; // must be imported before any screen
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';

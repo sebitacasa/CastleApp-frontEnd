@@ -1,4 +1,5 @@
 import React, { useState, useMemo, memo, useContext } from 'react';
+import { useTranslation } from 'react-i18next';
 import { View, Text, Image, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -13,6 +14,7 @@ const API_BASE = 'https://castleapp-backend-production.up.railway.app';
 
 const StoryCard = memo(({ item, navigation }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const { t } = useTranslation();
 
   // --- 1. HOOKS DE CONTEXTO ---
   const { userInfo } = useContext(AuthContext); 
@@ -103,7 +105,7 @@ const StoryCard = memo(({ item, navigation }) => {
         <View style={styles.badge}>
           <MaterialCommunityIcons name="bookmark" size={12} color={THEME.gold} style={{marginRight: 4}} />
           <Text style={styles.badgeText}>
-            {item.category ? item.category.toUpperCase() : 'HISTORIC'}
+            {item.category ? t(`categories.${item.category}`, item.category).toUpperCase() : t('common.historic')}
           </Text>
         </View>
 
@@ -131,8 +133,8 @@ const StoryCard = memo(({ item, navigation }) => {
         <View style={styles.locationRow}>
             <Ionicons name="location-sharp" size={14} color={THEME.gold} />
             <Text style={styles.location} numberOfLines={1}>
-                {item.country || item.vicinity || 'Unknown Location'}
-                {formattedDistance ? ` • ${formattedDistance} away` : ''}
+                {item.country || item.vicinity || t('card.unknownLocation')}
+                {formattedDistance ? ` • ${formattedDistance} ${t('feed.away')}` : ''}
             </Text>
         </View>
         
@@ -142,13 +144,13 @@ const StoryCard = memo(({ item, navigation }) => {
         {/* Descripción */}
         <Text style={styles.description} numberOfLines={2}>
           {item.description 
-            ? item.description.replace(/<[^>]*>?/gm, '') 
-            : 'Un lugar histórico fascinante esperando ser descubierto.'}
+            ? item.description.replace(/<[^>]*>?/gm, '')
+            : t('card.defaultDescription')}
         </Text>
 
         {/* Botón "Leer más" */}
         <View style={styles.footerRow}>
-            <Text style={styles.readMoreText}>EXPLORE</Text>
+            <Text style={styles.readMoreText}>{t('feed.explore')}</Text>
             <Ionicons name="arrow-forward" size={14} color={THEME.gold} />
         </View>
 

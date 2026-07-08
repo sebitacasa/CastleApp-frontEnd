@@ -10,6 +10,7 @@ import { useNavigation } from '@react-navigation/native';
 import * as Location from 'expo-location'; 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import StoryCard from '../components/StoryCard';
 import CitySearch from '../components/CitySearch';
@@ -88,6 +89,7 @@ const deg2rad = (deg) => deg * (Math.PI / 180);
 
 export default function FeedScreen() {
   const navigation = useNavigation();
+  const { t } = useTranslation();
   const { userInfo, logout } = useContext(AuthContext);
 
   const isLoggedIn = !!userInfo; 
@@ -133,7 +135,7 @@ export default function FeedScreen() {
           setActiveLocation({
               lat: freshLoc.coords.latitude,
               lon: freshLoc.coords.longitude,
-              label: "Current Location",
+              label: t('feed.currentLocation'),
               isManual: false
           });
       } catch (error) {
@@ -143,7 +145,7 @@ export default function FeedScreen() {
               setActiveLocation({
                   lat: lastKnown.coords.latitude,
                   lon: lastKnown.coords.longitude,
-                  label: "Current Location",
+                  label: t('feed.currentLocation'),
                   isManual: false
               });
           }
@@ -172,7 +174,7 @@ export default function FeedScreen() {
       try {
           const lastKnown = await Location.getLastKnownPositionAsync({});
           if (lastKnown) {
-              setActiveLocation({ lat: lastKnown.coords.latitude, lon: lastKnown.coords.longitude, label: "Current Location", isManual: false });
+              setActiveLocation({ lat: lastKnown.coords.latitude, lon: lastKnown.coords.longitude, label: t('feed.currentLocation'), isManual: false });
           }
       } catch (e) {
           console.log("Error resetting GPS");
@@ -386,7 +388,7 @@ export default function FeedScreen() {
                 {item.source === 'db' && (
                     <View style={localStyles.communityBadge}>
                         <MaterialCommunityIcons name="crown" size={14} color="#000" style={{ marginRight: 4 }} />
-                        <Text style={localStyles.communityText}>COMMUNITY GEM</Text>
+                        <Text style={localStyles.communityText}>{t('categories.Community').toUpperCase()} GEM</Text>
                     </View>
                 )}
             </View>
@@ -409,9 +411,9 @@ export default function FeedScreen() {
       return (
           <View style={[localStyles.emptyState, { paddingTop: HEADER_HEIGHT }]}>
               <MaterialCommunityIcons name="map-search-outline" size={60} color={THEME.gold} style={{opacity: 0.5}}/>
-              <Text style={{ color: THEME.subText, fontSize: 18, marginTop: 10 }}>Uncharted Territory</Text>
+              <Text style={{ color: THEME.subText, fontSize: 18, marginTop: 10 }}>{t('feed.noResults')}</Text>
               <Text style={{ color: THEME.subText, fontSize: 12, marginTop: 5 }}>
-                  {activeLocation?.isManual ? `No results for ${activeLocation.label}` : "Waiting for GPS..."}
+                  {activeLocation?.isManual ? `${t('feed.noResults')}: ${activeLocation.label}` : t('feed.noResultsHint')}
               </Text>
           </View>
       );
@@ -482,7 +484,7 @@ export default function FeedScreen() {
                                   }} 
                                   style={[localStyles.catBtn, selectedCategory === item && localStyles.catBtnActive]}
                               >
-                                  <Text style={[localStyles.catText, selectedCategory === item && localStyles.catTextActive]}>{item}</Text>
+                                  <Text style={[localStyles.catText, selectedCategory === item && localStyles.catTextActive]}>{t(`categories.${item}`)}</Text>
                               </TouchableOpacity>
                           )}
                       />
@@ -545,9 +547,9 @@ export default function FeedScreen() {
                   ) : (
                       <View style={localStyles.avatarPlaceholder}><Ionicons name="person" size={28} color={THEME.bg} /></View>
                   )}
-                  <Text style={localStyles.menuUserLabel}>{isLoggedIn ? 'Explorer Rank' : 'Guest Mode'}</Text>
-                  <Text style={localStyles.menuUserName} numberOfLines={1}>{isLoggedIn ? userName : 'Guest User'}</Text>
-                  <Text style={{ color: THEME.gold, fontSize: 14, marginTop: 4 }}>View Profile <Ionicons name="chevron-forward" size={14} /></Text>
+                  <Text style={localStyles.menuUserLabel}>{isLoggedIn ? t('feed.explorerRank') : t('feed.guestMode')}</Text>
+                  <Text style={localStyles.menuUserName} numberOfLines={1}>{isLoggedIn ? userName : t('feed.guestUser')}</Text>
+                  <Text style={{ color: THEME.gold, fontSize: 14, marginTop: 4 }}>{t('feed.viewProfile')} <Ionicons name="chevron-forward" size={14} /></Text>
               </TouchableOpacity>
 
               <View style={localStyles.separator} />
@@ -556,28 +558,28 @@ export default function FeedScreen() {
                 <>
                     <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('Favorites'); }}>
                         <Ionicons name="heart" size={20} color={THEME.gold} />
-                        <Text style={localStyles.menuItemText}>My Favorites</Text>
+                        <Text style={localStyles.menuItemText}>{t('feed.myFavorites')}</Text>
                     </TouchableOpacity>
                     <View style={localStyles.separator} />
                     <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); logout(); }}>
                         <Ionicons name="log-out" size={20} color={THEME.danger} />
-                        <Text style={[localStyles.menuItemText, { color: THEME.danger }]}>Sign Out</Text>
+                        <Text style={[localStyles.menuItemText, { color: THEME.danger }]}>{t('feed.signOut')}</Text>
                     </TouchableOpacity>
                 </>
               ) : (
                 <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); navigation.navigate('LoginScreen'); }}>
                     <Ionicons name="log-in" size={20} color={THEME.gold} />
-                    <Text style={[localStyles.menuItemText, { color: THEME.gold, fontWeight: 'bold' }]}>Sign In / Register</Text>
+                    <Text style={[localStyles.menuItemText, { color: THEME.gold, fontWeight: 'bold' }]}>{t('feed.signIn')}</Text>
                 </TouchableOpacity>
               )}
               <View style={localStyles.separator} />
               <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); Linking.openURL('https://sebitacasa.github.io/CastleApp-backend/privacy'); }}>
                   <Ionicons name="shield-checkmark-outline" size={20} color={THEME.subText} />
-                  <Text style={[localStyles.menuItemText, { color: THEME.subText }]}>Privacy Policy</Text>
+                  <Text style={[localStyles.menuItemText, { color: THEME.subText }]}>{t('feed.privacyPolicy')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={localStyles.menuItem} onPress={() => { setMenuVisible(false); Linking.openURL('https://sebitacasa.github.io/CastleApp-backend/terms'); }}>
                   <Ionicons name="document-text-outline" size={20} color={THEME.subText} />
-                  <Text style={[localStyles.menuItemText, { color: THEME.subText }]}>Terms of Use</Text>
+                  <Text style={[localStyles.menuItemText, { color: THEME.subText }]}>{t('feed.termsOfUse')}</Text>
               </TouchableOpacity>
           </View>
       )}

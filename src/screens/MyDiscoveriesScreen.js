@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios';
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import { APP_PALETTE as THEME } from '../theme/colors';
 
@@ -14,6 +15,7 @@ const TABS = ['Places', 'Contributions'];
 
 export default function MyDiscoveriesScreen({ navigation }) {
   const { userToken } = useContext(AuthContext);
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState('Places');
   const [places, setPlaces] = useState([]);
   const [contributions, setContributions] = useState([]);
@@ -30,7 +32,7 @@ export default function MyDiscoveriesScreen({ navigation }) {
         setPlaces(data.places || []);
         setContributions(data.contributions || []);
       } catch (e) {
-        setError('Could not load your discoveries.');
+        setError(t('discoveries.loadError'));
       } finally {
         setLoading(false);
       }
@@ -84,7 +86,7 @@ export default function MyDiscoveriesScreen({ navigation }) {
         <View style={styles.row}>
           <View style={[styles.statusBadge, { backgroundColor: item.is_approved ? '#D4EDDA' : '#FFF3CD' }]}>
             <Text style={[styles.statusText, { color: item.is_approved ? '#2E7D32' : '#856404' }]}>
-              {item.is_approved ? 'Approved' : 'Pending review'}
+              {item.is_approved ? t('discoveries.approved') : t('discoveries.pending')}
             </Text>
           </View>
         </View>
@@ -101,19 +103,17 @@ export default function MyDiscoveriesScreen({ navigation }) {
         color={THEME.border}
       />
       <Text style={styles.emptyTitle}>
-        {activeTab === 'Places' ? 'No places yet' : 'No contributions yet'}
+        {activeTab === 'Places' ? t('discoveries.emptyPlacesTitle') : t('discoveries.emptyContribTitle')}
       </Text>
       <Text style={styles.emptySub}>
-        {activeTab === 'Places'
-          ? 'Add a historic site from the "Add Place" tab and it will appear here.'
-          : 'Upload a photo or description for any place to contribute to the community.'}
+        {activeTab === 'Places' ? t('discoveries.emptyPlacesSub') : t('discoveries.emptyContribSub')}
       </Text>
       <TouchableOpacity
         style={styles.emptyBtn}
         onPress={() => navigation.navigate('MainTabs', { screen: 'Discover' })}
       >
         <Text style={styles.emptyBtnText}>
-          {activeTab === 'Places' ? 'ADD A PLACE' : 'CONTRIBUTE'}
+          {activeTab === 'Places' ? t('discoveries.addPlace') : t('discoveries.contribute')}
         </Text>
       </TouchableOpacity>
     </View>
@@ -128,7 +128,7 @@ export default function MyDiscoveriesScreen({ navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
           <Ionicons name="arrow-back" size={24} color={THEME.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>My Discoveries</Text>
+        <Text style={styles.headerTitle}>{t('discoveries.title')}</Text>
         <View style={styles.iconBtn} />
       </View>
 
@@ -141,7 +141,7 @@ export default function MyDiscoveriesScreen({ navigation }) {
             onPress={() => setActiveTab(tab)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab}
+              {tab === 'Places' ? t('discoveries.tabPlaces') : t('discoveries.tabContributions')}
               {tab === 'Places' && places.length > 0 ? ` (${places.length})` : ''}
               {tab === 'Contributions' && contributions.length > 0 ? ` (${contributions.length})` : ''}
             </Text>

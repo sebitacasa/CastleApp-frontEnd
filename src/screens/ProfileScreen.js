@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import axios from 'axios'; 
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import Footer from '../components/Footer';
 
@@ -23,6 +24,7 @@ import { APP_PALETTE as THEME } from '../theme/colors';
 const UPLOAD_BG = 'https://images.unsplash.com/photo-1533154683836-84ea7a0bc310?q=80&w=800&auto=format&fit=crop';
 
 const ProfileScreen = ({ navigation }) => {
+  const { t } = useTranslation();
   const { userInfo, logout } = useContext(AuthContext);
 
   const userPhoto = 
@@ -43,30 +45,27 @@ const ProfileScreen = ({ navigation }) => {
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      "Delete Account", 
-      "Are you sure? This action is permanent. You will lose all your favorites and contributions.", 
+      t('profile.deleteTitle'),
+      t('profile.deleteMessage'),
       [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "DELETE", 
-          style: "destructive", 
+        { text: t('profile.cancel'), style: "cancel" },
+        {
+          text: t('profile.deleteConfirm'),
+          style: "destructive",
           onPress: async () => {
             try {
               const userId = userInfo?.id || userInfo?.user?.id;
-              
               if (!userId) {
-                 Alert.alert("Error", "Could not identify user ID.");
-                 return;
+                Alert.alert("Error", t('profile.deleteIdError'));
+                return;
               }
-
               await axios.delete(`https://castleapp-backend-production.up.railway.app/auth/${userId}`);
-              logout(); 
-              
+              logout();
             } catch (error) {
               console.error("Error deleting account:", error);
-              Alert.alert("Error", "Could not delete account. Please try again later.");
+              Alert.alert("Error", t('profile.deleteError'));
             }
-          } 
+          }
         }
       ]
     );
@@ -78,10 +77,10 @@ const ProfileScreen = ({ navigation }) => {
       <View style={[styles.container, { justifyContent: 'center', alignItems: 'center' }]}>
          <StatusBar barStyle="dark-content" backgroundColor={THEME.bg} />
          <MaterialCommunityIcons name="account-lock" size={80} color={THEME.gold} />
-         <Text style={styles.guestTitle}>Guest Mode</Text>
-         <Text style={styles.guestSub}>Sign in to track your conquests and build your profile.</Text>
+         <Text style={styles.guestTitle}>{t('profile.guestTitle')}</Text>
+         <Text style={styles.guestSub}>{t('profile.guestSub')}</Text>
          <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('LoginScreen')}>
-            <Text style={styles.loginButtonText}>LOGIN / REGISTER</Text>
+            <Text style={styles.loginButtonText}>{t('profile.loginButton')}</Text>
          </TouchableOpacity>
       </View>
     );
@@ -98,7 +97,7 @@ const ProfileScreen = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
             <Ionicons name="arrow-back" size={24} color={THEME.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Profile</Text>
+        <Text style={styles.headerTitle}>{t('profile.title')}</Text>
         <TouchableOpacity style={styles.iconBtn}>
             <Ionicons name="settings-sharp" size={22} color={THEME.text} />
         </TouchableOpacity>
@@ -117,13 +116,13 @@ const ProfileScreen = ({ navigation }) => {
             
             <Text style={styles.nameText}>{userName}</Text>
             <Text style={styles.locationText}>
-                <MaterialCommunityIcons name="compass-outline" size={14} color={THEME.gold} /> History Seeker
+                <MaterialCommunityIcons name="compass-outline" size={14} color={THEME.gold} /> {t('profile.historySeeker')}
             </Text>
         </View>
 
         {/* --- 2. TARJETA HERO "SUBIR LUGAR" (CONTRIBUTE) --- */}
         <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>Contribute Legacy</Text>
+            <Text style={styles.sectionTitle}>{t('profile.contributeLegacy')}</Text>
             
             <TouchableOpacity 
                 activeOpacity={0.8} 
@@ -141,10 +140,8 @@ const ProfileScreen = ({ navigation }) => {
                             <MaterialCommunityIcons name="feather" size={28} color={THEME.bg} />
                         </View>
                         
-                        <Text style={styles.uploadTitle}>Chronicle the Past</Text>
-                        <Text style={styles.uploadSubtitle}>
-                            Did you find an unmapped fortress or ruin? Tap here to scan and add it to the map.
-                        </Text>
+                        <Text style={styles.uploadTitle}>{t('profile.chronicleThePast')}</Text>
+                        <Text style={styles.uploadSubtitle}>{t('profile.chronicleSub')}</Text>
                     </View>
                 </ImageBackground>
             </TouchableOpacity>
@@ -154,33 +151,33 @@ const ProfileScreen = ({ navigation }) => {
         <View style={styles.menuContainer}>
             <MenuOption
                 icon="map-outline"
-                label="My Discoveries"
+                label={t('profile.myDiscoveries')}
                 color={THEME.text}
                 onPress={() => navigation.navigate('MyDiscoveries')}
             />
             <MenuOption 
                 icon="heart-outline" 
-                label="Favorite Places" 
+                label={t('profile.myFavorites')}
                 color={THEME.text}
                 onPress={() => navigation.navigate('Favorites')} 
             />
             <MenuOption 
                 icon="notifications-outline" 
-                label="Notifications" 
+                label={t('profile.notifications')}
                 color={THEME.text}
                 onPress={() => {}} 
             />
             
             <MenuOption
                 icon="log-out-outline"
-                label="Log Out"
+                label={t('profile.logOut')}
                 color={THEME.text}
                 onPress={logout}
             />
 
             <MenuOption 
                 icon="trash-bin-outline" 
-                label="Delete Account" 
+                label={t('profile.deleteAccount')}
                 color={THEME.danger}
                 onPress={handleDeleteAccount} 
                 noBorder
