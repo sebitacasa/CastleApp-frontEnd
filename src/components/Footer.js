@@ -6,7 +6,7 @@ import { APP_PALETTE as THEME } from '../theme/colors';
 // TODO: Replace these placeholders with real hosted URLs before publishing to EU stores
 const PRIVACY_URL = 'https://sebitacasa.github.io/CastleApp-backend/privacy';
 const TERMS_URL   = 'https://sebitacasa.github.io/CastleApp-backend/terms';
-const CONTACT_EMAIL = 'blackwilson1495@gmail.com';
+const CONTACT_EMAIL = 'castleapp.tester@gmail.com';
 
 const open = (url) => Linking.openURL(url).catch(() => {});
 
