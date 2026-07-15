@@ -14,8 +14,7 @@
     "production": {
       "autoIncrement": true,
       "env": {
-        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "51752012600-igpkoafe26206ti3ie5bmnlln5gn1psc.apps.googleusercontent.com",
-        "GOOGLE_MAPS_API_KEY": "AIzaSyDcoTCoGGcsrrr0ynSWys_g3KMJ3Af-9Kg"
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "51752012600-igpkoafe26206ti3ie5bmnlln5gn1psc.apps.googleusercontent.com"
       }
     }
   },
