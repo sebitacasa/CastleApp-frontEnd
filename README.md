@@ -1,4 +1,4 @@
-# 🏰 CastleApp (Echoes & Paths)
+# 🏰 Echoes & Paths
 > **Discover European heritage through geospatial exploration.**
 
 [![React Native](https://img.shields.io/badge/React_Native-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://reactnative.dev/)
@@ -9,7 +9,7 @@
 ---
 
 ## 📖 Overview
-**CastleApp** is a mobile application designed to bridge the gap between modern technology and historical memory. It turns your surroundings into a living museum: using your location it surfaces nearby castles, ruins, museums, monuments and religious sites, enriched with descriptions and images.
+**Echoes & Paths** is a mobile application designed to bridge the gap between modern technology and historical memory. It turns your surroundings into a living museum: using your location it surfaces nearby castles, ruins, museums, monuments and religious sites, enriched with descriptions and images.
 
 Places come from the **Google Places API** and are enriched with summaries and translations from **Wikipedia** (with **Europeana / Wikimedia** used for imagery), all served by the companion backend. On top of discovery, the app adds a light layer of gamification and social features — conquer places you physically visit, climb medieval ranks, and compare your map against your friends'.
 
